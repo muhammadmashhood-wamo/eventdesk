@@ -42,8 +42,11 @@ class Review(Base):
     user: Mapped["User"] = relationship("User", back_populates="reviews")
     event: Mapped["Event"] = relationship("Event", back_populates="reviews")
     
+    parent: Mapped["Review | None"] = relationship(
+        "Review", remote_side=[id], back_populates="replies"
+    )
     replies: Mapped[list["Review"]] = relationship(
-        "Review", backref=relationship("Review", remote_side=[id])
+        "Review", back_populates="parent"
     )
 
     __table_args__ = (
