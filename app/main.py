@@ -6,7 +6,7 @@ from app.core.config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    version= settings.VERSION,
+    version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -17,12 +17,12 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-app.include_router(api_router,prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return{"status":"ok","project":settings.PROJECT_NAME}
-    
+    return {"status": "ok", "project": settings.PROJECT_NAME}

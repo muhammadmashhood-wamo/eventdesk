@@ -1,8 +1,20 @@
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import ARRAY, CheckConstraint, DateTime, Enum, ForeignKey, Numeric, String, Text, Integer, Boolean
+
+from sqlalchemy import (
+    ARRAY,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,7 +46,8 @@ class Event(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     venue: Mapped[str] = mapped_column(String(255), nullable=False)
     event_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False #should be greater than current time and date
+        DateTime(timezone=True),
+        nullable=False,  # should be greater than current time and date
     )
     ticket_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     total_tickets: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -46,21 +59,17 @@ class Event(Base):
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     organizer: Mapped["User"] = relationship("User", back_populates="events")
-    bookings: Mapped[list["Booking"]] = relationship(
-        "Booking", back_populates="event"
-    )
-    reviews: Mapped[list["Review"]] = relationship(
-        "Review", back_populates="event"
-    )
+    bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="event")
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="event")
 
     __table_args__ = (
         CheckConstraint(

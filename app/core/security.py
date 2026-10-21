@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
+
 import bcrypt
-from jose import JWTError, jwt
+from jose import jwt
 
 from app.core.config import settings
 
@@ -26,7 +27,7 @@ def create_access_token(
 ) -> str:
 
     to_encode = data.copy()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if expires_delta:
         expire = now + expires_delta
     else:
@@ -41,7 +42,7 @@ def create_refresh_token(
 ) -> str:
 
     to_encode = data.copy()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if expires_delta:
         expire = now + expires_delta
     else:
@@ -54,5 +55,3 @@ def create_refresh_token(
 def decode_token(token: str) -> dict[str, Any]:
 
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-
-
