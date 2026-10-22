@@ -60,3 +60,41 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserProfileUpdateRequest(BaseModel):
+    email: EmailStr | None = None
+
+
+class UserPasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Password must contain at least one lowercase letter.")
+        if not re.search(r"\d", value):
+            raise ValueError("Password must contain at least one digit.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
+            raise ValueError(
+                'Password must contain at least one special character (!@#$%^&*(),.?":{}|<>).'
+            )
+        return value
+
+
+class UserAdminUpdateRequest(BaseModel):
+    role: UserRole | None = None
+    is_active: bool | None = None
+
+
+class UserListResponse(BaseModel):
+    items: list[UserResponse]
+    total: int
+    skip: int
+    limit: int
