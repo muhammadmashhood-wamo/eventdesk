@@ -1,7 +1,8 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, Boolean
+
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,20 +32,21 @@ class Review(Base):
     comment: Mapped[str] = mapped_column(Text, nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     user: Mapped["User"] = relationship("User", back_populates="reviews")
     event: Mapped["Event"] = relationship("Event", back_populates="reviews")
-    
-    replies: Mapped[list["Review"]] = relationship(
-        "Review", backref=relationship("Review", remote_side=[id])
+
+    parent: Mapped["Review | None"] = relationship(
+        "Review", remote_side=[id], back_populates="replies"
     )
+    replies: Mapped[list["Review"]] = relationship("Review", back_populates="parent")
 
     __table_args__ = (
         CheckConstraint("rating >= 1 AND rating <= 5", name="check_valid_rating_range"),
