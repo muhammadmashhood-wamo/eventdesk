@@ -75,4 +75,13 @@ class EventRepository(BaseRepository[Event]):
         return list((await db.execute(stmt)).scalars().all())
 
 
+    async def get_by_id_for_update(self, db: AsyncSession, event_id: UUID) -> Event | None:
+        stmt = (
+            select(Event)
+            .where(Event.id == event_id, Event.is_deleted.is_(False))
+            .with_for_update()
+        )
+        return (await db.execute(stmt)).scalar_one_or_none()
+
+
 event_repository = EventRepository()
