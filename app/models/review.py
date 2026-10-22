@@ -28,7 +28,7 @@ class Review(Base):
     parent_review_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("reviews.id"), nullable=True
     )
-    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     comment: Mapped[str] = mapped_column(Text, nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
