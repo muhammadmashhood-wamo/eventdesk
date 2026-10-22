@@ -66,7 +66,4 @@ class Event(Base):
         CheckConstraint(
             "available_tickets >= 0", name="check_available_tickets_non_negative"
         ),
-        CheckConstraint(
-            "event_date >= func.now()", name="check_event_date_not_in_past"
-        )
     )
