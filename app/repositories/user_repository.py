@@ -1,12 +1,14 @@
+from app.repositories.base import BaseRepository
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User, UserRole
 
 
-class UserRepository:
+class UserRepository(BaseRepository[User]):
+    model=User
     async def get_by_email(self, db: AsyncSession, email: str) -> User | None:
         query = select(User).where(User.email == email, User.is_deleted.is_(False))
         result = await db.execute(query)
@@ -32,5 +34,15 @@ class UserRepository:
         await db.refresh(user)
         return user
 
+    async def list_users(
+        self,db: AsyncSession,*,skip:int=0,limit:int = 20
+    ) -> tuple[list[User],int]:
+        filters = [User.is_deleted.is_(False)]
+        count_stmt = select(func.count()).select_from(User).where(*filters)
+        total = ( await db.execute(count_stmt)).scalar_one()
+
+        row_stmt = (select(User).where(*filters).order_by(User.created_at.desc()).offset(skip).limit(limit))
+        rows = list((await db.execute(row_stmt)).scalars().all())
+        return rows, total
 
 user_repository = UserRepository()  # singleton isntance
