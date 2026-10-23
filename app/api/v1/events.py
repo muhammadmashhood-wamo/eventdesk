@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_role
@@ -14,8 +14,10 @@ from app.schemas.event import (
     EventUpdateRequest,
 )
 from app.services.event_service import event_service
+from app.services.notification_service import notification_service
 
 router = APIRouter(prefix="/events", tags=["Events"])
+
 
 
 @router.post(
@@ -66,9 +68,17 @@ async def update_event(
 @router.post("/{event_id}/cancel", response_model=EventResponse)
 async def cancel_event(
     event_id: UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.ORGANIZER])),
 ):
-    return await event_service.cancel_event(
+    cancelled_event = await event_service.cancel_event(
         db, event_id=event_id, current_user=current_user
     )
+    background_tasks.add_task(
+        notification_service.notify_event_cancelled,
+        event_id=cancelled_event.id,
+        event_title=cancelled_event.title,
+    )
+    return cancelled_event
+
