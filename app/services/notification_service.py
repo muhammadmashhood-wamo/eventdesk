@@ -5,6 +5,7 @@ from app.models.notification import Notification, NotificationType
 from app.models.user import User
 from app.repositories.notification_repository import notification_repository
 from app.core.database import async_session_maker
+from app.core.websockets import manager
 
 
 class NotificationService:
@@ -33,13 +34,25 @@ class NotificationService:
         notification_type: NotificationType,
     ) -> None:
         async with async_session_maker() as session:
-            await notification_repository.create_notification(
+            notif=await notification_repository.create_notification(
                 session,
                 user_id=user_id,
                 title=title,
                 message=message,
                 notification_type=notification_type,
             )
+        
+        await manager.send_to_user(
+            user_id,
+            {
+                "type": "NEW_NOTIFICATION",
+                "id": str(notif.id),
+                "title": notif.title,
+                "message": notif.message,
+                "notification_type": notif.type.value,
+                "created_at": notif.created_at.isoformat(),
+            },
+        )
 
     async def list_notifications(
         self,
@@ -109,12 +122,23 @@ class NotificationService:
             )
             user_ids = (await session.execute(stmt)).scalars().all()
             for uid in user_ids:
-                await notification_repository.create_notification(
+                notif = await notification_repository.create_notification(
                     session,
                     user_id=uid,
                     title="Event Cancelled",
                     message=f"The event '{event_title}' has been cancelled.",
                     notification_type=NotificationType.EVENT_CANCELLED,
+                )
+                await manager.send_to_user(
+                    uid,
+                    {
+                        "type": "NEW_NOTIFICATION",
+                        "id": str(notif.id),
+                        "title": notif.title,
+                        "message": notif.message,
+                        "notification_type": notif.type.value,
+                        "created_at": notif.created_at.isoformat(),
+                    },
                 )
 
 
