@@ -1,15 +1,20 @@
-from app.core.scheduler import scheduler
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.scheduler import scheduler
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler.start()
+    if not os.getenv("TESTING"):
+        scheduler.start()
     yield
-    scheduler.stop()
+    if not os.getenv("TESTING"):
+        scheduler.stop()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
