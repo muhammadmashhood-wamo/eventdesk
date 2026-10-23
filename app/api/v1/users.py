@@ -1,5 +1,5 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, require_role
 from app.core.database import get_db
@@ -11,6 +11,7 @@ from app.schemas.user import (
     UserProfileUpdateRequest,
     UserResponse,
 )
+from app.services.audit_service import audit_service
 from app.services.user_service import user_service
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -29,7 +30,7 @@ async def change_my_password(
     current_user: User = Depends(get_current_user)
 ):
     await user_service.change_password(db, current_user = current_user, data = payload)
-    return { "detail": "Password changed successfully"}\
+    return { "detail": "Password changed successfully"}
 
 @router.get(
     "",response_model=UserListResponse,
@@ -52,8 +53,22 @@ async def list_all_users(
 async def admin_update_user(
     user_id: UUID,
     payload: UserAdminUpdateRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user:User = Depends(require_role([UserRole.ADMIN])),
 ):
-    return await user_service.admin_update_user(db,target_user_id=user_id,current_admin=current_user,data = payload)
+    updated_user = await user_service.admin_update_user(db,target_user_id=user_id,current_admin=current_user,data = payload)
+    details = []
+    if payload.role is not None:
+        details.append(f"role to {payload.role.value}")
+    if payload.is_active is not None:
+        details.append(f"is_active to {payload.is_active}")
+    details_str = ", ".join(details) if details else "profile"
+    background_tasks.add_task(
+        audit_service.log_background,
+        user_id=current_user.id,
+        action="USER_UPDATED_BY_ADMIN",
+        details=f"Admin updated user {user_id}: changed {details_str}",
+    )
+    return updated_user
     

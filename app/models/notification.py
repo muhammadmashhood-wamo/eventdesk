@@ -18,6 +18,7 @@ class NotificationType(str, enum.Enum):
     REVIEW = "Review"
     EVENT_CANCELLED = "EventCancelled"
     SYSTEM = "System"
+    EVENT_REMINDER = "EventReminder"
 
 
 class Notification(Base):
