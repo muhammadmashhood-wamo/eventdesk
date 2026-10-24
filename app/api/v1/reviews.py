@@ -1,3 +1,4 @@
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -10,6 +11,7 @@ from app.models.review import Review
 from app.models.user import User, UserRole
 from app.repositories.event_repository import event_repository
 from app.repositories.review_repository import review_repository
+from app.repositories.user_repository import user_repository
 from app.schemas.review import (
     ReviewCreateRequest,
     ReviewListResponse,
@@ -21,6 +23,7 @@ from app.services.notification_service import notification_service
 from app.services.review_service import review_service
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
+MENTION_PATTERN = re.compile(r"@([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})")
 
 
 def _build_nested(reviews: list[Review]) -> list[ReviewResponse]:
@@ -80,6 +83,22 @@ async def create_review(
                 user_id=event.organizer_id,
                 title="New Review on Your Event",
                 message=f"{current_user.email} left a review on '{event.title}'.",
+                notification_type=NotificationType.REVIEW,
+            )
+
+    mentioned_emails = {
+        email.lower() for email in MENTION_PATTERN.findall(payload.comment)
+    }
+    for email in mentioned_emails:
+        if email == current_user.email.lower():
+            continue
+        mentioned_user = await user_repository.get_by_email(db, email=email)
+        if mentioned_user and mentioned_user.is_active:
+            background_tasks.add_task(
+                notification_service.send_background_notification,
+                user_id=mentioned_user.id,
+                title="You were mentioned in a review",
+                message=f"{current_user.name or current_user.email} mentioned you in a review.",
                 notification_type=NotificationType.REVIEW,
             )
 

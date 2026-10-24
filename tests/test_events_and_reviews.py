@@ -187,3 +187,64 @@ async def test_review_flow_booking_requirement_and_replies(client: AsyncClient):
         headers=auth_headers_for(admin),
     )
     assert admin_del.status_code == 204
+
+
+async def test_review_mentions_notify_matching_users_once(client: AsyncClient):
+    organizer = await create_test_user(role=UserRole.ORGANIZER)
+    reviewer = await create_test_user(role=UserRole.ATTENDEE)
+    mentioned = await create_test_user(role=UserRole.ATTENDEE)
+    event_date = (datetime.now(timezone.utc) + timedelta(days=8)).isoformat()
+    event_res = await client.post(
+        "/api/v1/events",
+        json={
+            "title": "Mention Notification Event",
+            "description": "Event for review mention notifications",
+            "venue": "Review Hall",
+            "event_date": event_date,
+            "total_tickets": 5,
+            "ticket_price": 12,
+            "status": "Published",
+        },
+        headers=auth_headers_for(organizer),
+    )
+    assert event_res.status_code == 201
+    event_id = event_res.json()["id"]
+
+    booking_res = await client.post(
+        "/api/v1/bookings",
+        json={"event_id": event_id, "ticket_count": 1},
+        headers=auth_headers_for(reviewer),
+    )
+    assert booking_res.status_code == 201
+
+    review_res = await client.post(
+        f"/api/v1/reviews/events/{event_id}",
+        json={
+            "rating": 5,
+            "comment": f"Thanks @{mentioned.email} and @{mentioned.email}; @{reviewer.email}",
+        },
+        headers=auth_headers_for(reviewer),
+    )
+    assert review_res.status_code == 201
+
+    mentioned_notifications = await client.get(
+        "/api/v1/notifications?type=Review",
+        headers=auth_headers_for(mentioned),
+    )
+    assert mentioned_notifications.status_code == 200
+    mentions = [
+        item
+        for item in mentioned_notifications.json()["items"]
+        if item["title"] == "You were mentioned in a review"
+    ]
+    assert len(mentions) == 1
+
+    reviewer_notifications = await client.get(
+        "/api/v1/notifications?type=Review",
+        headers=auth_headers_for(reviewer),
+    )
+    assert reviewer_notifications.status_code == 200
+    assert not any(
+        item["title"] == "You were mentioned in a review"
+        for item in reviewer_notifications.json()["items"]
+    )

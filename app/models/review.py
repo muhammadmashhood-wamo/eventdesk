@@ -57,7 +57,7 @@ class Review(Base):
     def user_name(self) -> str | None:
         user = self.__dict__.get("user")
         if user is not None:
-            return getattr(user, "name", user.email.split("@")[0])
+            return user.name or user.email.split("@")[0]
         return None
 
     __table_args__ = (

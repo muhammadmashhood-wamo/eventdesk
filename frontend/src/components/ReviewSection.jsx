@@ -128,6 +128,7 @@ export default function ReviewSection({ eventId }) {
                 onChange={e => setForm(f => ({ ...f, comment: e.target.value }))}
                 required
               />
+              <span className="text-muted text-sm">Mention a user with @email@example.com.</span>
             </div>
             <button type="submit" className="btn btn-primary btn-sm" disabled={submitting}>
               {submitting ? 'Posting…' : (editId ? 'Update' : replyTo ? 'Post reply' : 'Post review')}
