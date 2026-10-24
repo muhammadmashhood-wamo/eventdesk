@@ -85,10 +85,9 @@ export default function EventDetailPage() {
   const userRole = (user?.role || '').toLowerCase()
   const isOwner = user && (user.id === event.organizer_id || (event.organizer_email && user.email === event.organizer_email))
   const canManage = isOwner || userRole === 'admin'
-  const isAttendee = userRole === 'attendee'
 
   const soldOut = event.available_tickets === 0
-  const canBook = user && isAttendee && event.status === 'Published' && !soldOut
+  const canBook = user && event.status === 'Published' && !soldOut
 
   return (
     <div className="page">
@@ -226,16 +225,10 @@ export default function EventDetailPage() {
                     <div className="text-sm text-muted" style={{ marginTop: '.3rem' }}>Use the management buttons above to update this event.</div>
                   </div>
                 )}
-                {user && !isOwner && !isAttendee && (
-                  <div style={{ background: 'var(--bg-secondary)', padding: '.75rem', borderRadius: 'var(--radius)' }}>
-                    <span>{userRole === 'admin' ? 'Admin accounts cannot book tickets' : 'Organizer accounts cannot book tickets'}</span>
-                    <div className="text-sm text-muted" style={{ marginTop: '.3rem' }}>Please sign in with an Attendee account.</div>
-                  </div>
-                )}
-                {user && isAttendee && soldOut && (
+                {user && soldOut && (
                   <span style={{ color: 'var(--danger)', fontWeight: 600 }}>This event is sold out</span>
                 )}
-                {user && isAttendee && event.status !== 'Published' && (
+                {user && event.status !== 'Published' && (
                   <span>Booking not available (Event is {event.status})</span>
                 )}
               </div>

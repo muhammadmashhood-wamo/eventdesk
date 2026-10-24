@@ -18,12 +18,6 @@ class BookingService:
         current_user: User,
 
     )-> Booking:
-        if current_user.role != UserRole.ATTENDEE:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only attendees can book tickets for events. Organizers and Admins cannot book tickets.",
-            )
-
         event = await event_repository.get_by_id_for_update(db,data.event_id)
         if not event:
             raise HTTPException(

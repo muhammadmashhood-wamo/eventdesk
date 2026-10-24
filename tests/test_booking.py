@@ -138,3 +138,20 @@ async def test_concurrent_booking_cancellation_restores_tickets_once(
     event_res = await client.get(f"/api/v1/events/{event.id}")
     assert event_res.status_code == 200
     assert event_res.json()["available_tickets"] == 3
+
+
+async def test_all_roles_can_book_published_events(client: AsyncClient):
+    event = await create_published_event(total_tickets=3)
+
+    for role in (UserRole.ADMIN, UserRole.ORGANIZER, UserRole.ATTENDEE):
+        user = await create_test_user(role=role)
+        response = await client.post(
+            "/api/v1/bookings",
+            json={"event_id": str(event.id), "ticket_count": 1},
+            headers=auth_headers_for(user),
+        )
+        assert response.status_code == 201
+        assert response.json()["user_id"] == str(user.id)
+
+    event_res = await client.get(f"/api/v1/events/{event.id}")
+    assert event_res.json()["available_tickets"] == 0
