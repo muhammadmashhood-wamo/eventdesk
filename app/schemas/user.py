@@ -29,6 +29,15 @@ class UserRegisterRequest(BaseModel):
             )
         return value
 
+    @field_validator("role", mode="before")
+    @classmethod
+    def normalize_role(cls, value: object) -> object:
+        if isinstance(value, str):
+            for member in UserRole:
+                if member.value.lower() == value.lower() or member.name.lower() == value.lower():
+                    return member
+        return value
+
     @field_validator("role")
     @classmethod
     def prevent_admit_registration(cls, value: UserRole) -> UserRole:
@@ -91,6 +100,15 @@ class UserPasswordChangeRequest(BaseModel):
 class UserAdminUpdateRequest(BaseModel):
     role: UserRole | None = None
     is_active: bool | None = None
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def normalize_role(cls, value: object) -> object:
+        if isinstance(value, str):
+            for member in UserRole:
+                if member.value.lower() == value.lower() or member.name.lower() == value.lower():
+                    return member
+        return value
 
 
 class UserListResponse(BaseModel):

@@ -13,7 +13,7 @@ class ReviewRepository(BaseRepository[Review]):
     async def get_by_id(self, db: AsyncSession, review_id: UUID) -> Review | None:
         query = (
             select(Review)
-            .options(selectinload(Review.replies))
+            .options(selectinload(Review.replies).selectinload(Review.user), selectinload(Review.user))
             .where(Review.id == review_id, Review.is_deleted.is_(False))
         )
         result = await db.execute(query)
@@ -60,7 +60,7 @@ class ReviewRepository(BaseRepository[Review]):
     ) -> tuple[list[Review], int]:
         query = (
             select(Review)
-            .options(selectinload(Review.replies))
+            .options(selectinload(Review.replies).selectinload(Review.user), selectinload(Review.user))
             .where(
                 Review.event_id == event_id,
                 Review.is_deleted.is_(False),

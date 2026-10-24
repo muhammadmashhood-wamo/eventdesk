@@ -52,6 +52,29 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if not credentials:
+        return None
+    try:
+        payload = decode_token(credentials.credentials)
+        token_type = payload.get("type")
+        if token_type != "access":
+            return None
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            return None
+        user_id = UUID(user_id_str)
+        user = await user_repository.get_by_id(db, user_id)
+        if user and user.is_active:
+            return user
+    except Exception:
+        return None
+    return None
+
+
 def require_role(allowed_roles: list[UserRole]):
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in allowed_roles:
