@@ -82,7 +82,7 @@ class BookingService:
         booking_id: UUID,
         current_user: User,
         ) -> Booking:
-        booking = await booking_repository.get_by_id_active(db,booking_id)
+        booking = await booking_repository.get_by_id_active_for_update(db,booking_id)
         if not booking:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

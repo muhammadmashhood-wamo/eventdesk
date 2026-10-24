@@ -18,6 +18,17 @@ class BookingRepository(BaseRepository[Booking]):
         )
         return (await db.execute(stmt)).scalar_one_or_none()
 
+    async def get_by_id_active_for_update(
+        self, db: AsyncSession, booking_id: UUID
+    ) -> Booking | None:
+        stmt = (
+            select(Booking)
+            .options(selectinload(Booking.event).selectinload(Event.organizer))
+            .where(Booking.id == booking_id, Booking.is_deleted.is_(False))
+            .with_for_update()
+        )
+        return (await db.execute(stmt)).scalar_one_or_none()
+
     async def list_user_bookings(
         self,
         db: AsyncSession,
