@@ -20,10 +20,16 @@ class UserRepository(BaseRepository[User]):
         return result.scalars().first()
 
     async def create(
-        self, db: AsyncSession, email: str, hashed_password: str, role: UserRole
+        self,
+        db: AsyncSession,
+        email: str,
+        hashed_password: str,
+        role: UserRole,
+        name: str | None = None,
     ) -> User:
         user = User(
             email=email,
+            name=name,
             hashed_password=hashed_password,
             role=role,
             is_active=True,

@@ -10,30 +10,33 @@ export default function ProfilePage() {
   const { show } = useToast()
 
   const [email, setEmail] = useState('')
-  const [savingEmail, setSavingEmail] = useState(false)
+  const [name, setName] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
 
   const [passwords, setPasswords] = useState({ current_password: '', new_password: '', confirm_password: '' })
   const [changingPwd, setChangingPwd] = useState(false)
 
   useEffect(() => {
     if (user?.email) setEmail(user.email)
+    if (user) setName(user.name || '')
   }, [user])
 
-  const handleUpdateEmail = async (e) => {
+  const handleUpdateProfile = async (e) => {
     e.preventDefault()
-    if (!email || email === user?.email) {
-      show('No changes to email.', 'info')
+    const normalizedName = name.trim()
+    if ((!email || email === user?.email) && normalizedName === (user?.name || '')) {
+      show('No profile changes to save.', 'info')
       return
     }
-    setSavingEmail(true)
+    setSavingProfile(true)
     try {
-      await api.updateProfile({ email })
+      await api.updateProfile({ email, name: normalizedName })
       await reload()
-      show('Email updated successfully!', 'success')
+      show('Profile updated successfully!', 'success')
     } catch (err) {
       show(err.message, 'error')
     } finally {
-      setSavingEmail(false)
+      setSavingProfile(false)
     }
   }
 
@@ -77,7 +80,18 @@ export default function ProfilePage() {
             <Mail size={18} color="var(--primary)" /> Profile Information
           </h2>
 
-          <form onSubmit={handleUpdateEmail}>
+          <form onSubmit={handleUpdateProfile}>
+            <div className="form-group">
+              <label htmlFor="profile-name">Name</label>
+              <input
+                id="profile-name"
+                type="text"
+                className="form-control"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                maxLength={120}
+              />
+            </div>
             <div className="form-group">
               <label htmlFor="profile-email">Email Address</label>
               <input
@@ -114,8 +128,8 @@ export default function ProfilePage() {
               </p>
             )}
 
-            <button type="submit" className="btn btn-primary btn-sm" disabled={savingEmail || email === user?.email}>
-              {savingEmail ? 'Saving changes…' : 'Update Email'}
+            <button type="submit" className="btn btn-primary btn-sm" disabled={savingProfile}>
+              {savingProfile ? 'Saving changes…' : 'Save Profile'}
             </button>
           </form>
         </div>

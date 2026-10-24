@@ -18,6 +18,7 @@ export default function RegisterPage() {
       await api.register({
         email: form.email,
         password: form.password,
+        name: form.name.trim() || undefined,
         role: form.role,
       })
       show('Account created! Please sign in.', 'success')

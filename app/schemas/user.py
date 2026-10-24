@@ -10,7 +10,16 @@ from app.models.user import UserRole
 class UserRegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    name: str | None = None
     role: UserRole = UserRole.ATTENDEE
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
 
     @field_validator("password")
     @classmethod
@@ -64,6 +73,7 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
+    name: str | None = None
     role: UserRole
     is_active: bool
     created_at: datetime
@@ -73,6 +83,15 @@ class UserResponse(BaseModel):
 
 class UserProfileUpdateRequest(BaseModel):
     email: EmailStr | None = None
+    name: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
 
 
 class UserPasswordChangeRequest(BaseModel):

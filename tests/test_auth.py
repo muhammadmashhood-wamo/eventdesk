@@ -88,3 +88,30 @@ async def test_login_invalid_password(client: AsyncClient):
         "/api/v1/auth/login", json={"email": email, "password": "WrongPassword123!"}
     )
     assert response.status_code == 401
+
+
+async def test_user_can_register_and_update_display_name(client: AsyncClient):
+    email = f"named_{uuid.uuid4().hex[:8]}@example.com"
+    registration = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": email,
+            "password": "StrongPassword123!",
+            "name": "Event Attendee",
+        },
+    )
+    assert registration.status_code == 201
+    assert registration.json()["name"] == "Event Attendee"
+
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": "StrongPassword123!"},
+    )
+    token = login.json()["access_token"]
+    updated = await client.patch(
+        "/api/v1/users/me",
+        json={"name": "Event Host"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["name"] == "Event Host"

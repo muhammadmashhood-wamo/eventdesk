@@ -37,6 +37,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(
         String(256), unique=True, index=True, nullable=False
     )
+    name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole), default=UserRole.ATTENDEE, nullable=False
@@ -54,7 +55,3 @@ class User(Base):
     events: Mapped[list["Event"]] = Relationship("Event", back_populates="organizer")
     bookings: Mapped[list["Booking"]] = Relationship("Booking", back_populates="user")
     reviews: Mapped[list["Review"]] = Relationship("Review", back_populates="user")
-
-    @property
-    def name(self) -> str:
-        return self.email.split("@")[0]

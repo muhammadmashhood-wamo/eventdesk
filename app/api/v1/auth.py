@@ -38,7 +38,11 @@ async def register(user_in: UserRegisterRequest, db: AsyncSession = Depends(get_
         )
     hashed_pwd = hash_password(user_in.password)
     new_user = await user_repository.create(
-        db=db, email=user_in.email, hashed_password=hashed_pwd, role=user_in.role
+        db=db,
+        email=user_in.email,
+        hashed_password=hashed_pwd,
+        role=user_in.role,
+        name=user_in.name or user_in.email.split("@")[0],
     )
     return new_user
 

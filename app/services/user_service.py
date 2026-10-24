@@ -14,6 +14,8 @@ class UserService:
     async def update_profile(
         self,db: AsyncSession, *, current_user: User, data: UserProfileUpdateRequest
     ):
+        if data.name is not None:
+            current_user.name = data.name
         if data.email and data.email != current_user.email:
             existing = await user_repository.get_by_email(db,email=data.email)
             if existing:
