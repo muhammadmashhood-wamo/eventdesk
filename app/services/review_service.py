@@ -57,15 +57,14 @@ class ReviewService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Organizers cannot review their own events",
                 )
-            if user_role != UserRole.ADMIN:
-                booked = await booking_repository.has_confirmed_booking(
-                    db, user_id=user_id, event_id=event_id
+            booked = await booking_repository.has_confirmed_booking(
+                db, user_id=user_id, event_id=event_id
+            )
+            if not booked:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You can only review events you have booked.",
                 )
-                if not booked:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="You can only review events you have booked.",
-                    )
 
         return await review_repository.create(
             db,

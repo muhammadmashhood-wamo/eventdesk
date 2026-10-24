@@ -116,6 +116,13 @@ async def test_review_flow_booking_requirement_and_replies(client: AsyncClient):
     )
     assert res_unbooked.status_code == 403
 
+    res_unbooked_admin = await client.post(
+        f"/api/v1/reviews/events/{event_id}",
+        json={"rating": 5, "comment": "Admin review without booking"},
+        headers=auth_headers_for(admin),
+    )
+    assert res_unbooked_admin.status_code == 403
+
     # 2. Organizer tries to review their own event -> 400 Bad Request
     res_self_review = await client.post(
         f"/api/v1/reviews/events/{event_id}",
@@ -162,6 +169,14 @@ async def test_review_flow_booking_requirement_and_replies(client: AsyncClient):
     assert res_org_reply.status_code == 201
     reply_data = res_org_reply.json()
     assert reply_data["user_email"] == organizer.email
+
+    admin_edit_reply = await client.patch(
+        f"/api/v1/reviews/{reply_data['id']}",
+        json={"comment": "Admin edited the organizer reply"},
+        headers=auth_headers_for(admin),
+    )
+    assert admin_edit_reply.status_code == 200
+    assert admin_edit_reply.json()["comment"] == "Admin edited the organizer reply"
 
     # 7. List reviews returns total count and nested replies
     list_res = await client.get(f"/api/v1/reviews/events/{event_id}")

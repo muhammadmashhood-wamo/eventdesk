@@ -30,6 +30,7 @@ export default function ReviewSection({ eventId }) {
   const [submitting, setSubmitting] = useState(false)
   const [replyTo, setReplyTo] = useState(null) // { id, authorName }
   const [editId, setEditId] = useState(null)
+  const [isEditingReply, setIsEditingReply] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -48,9 +49,13 @@ export default function ReviewSection({ eventId }) {
       const payload = { rating: form.rating, comment: form.comment }
       if (replyTo) payload.parent_review_id = replyTo.id
       if (editId) {
-        await api.updateReview(editId, { rating: form.rating, comment: form.comment })
+        const update = isEditingReply
+          ? { comment: form.comment }
+          : { rating: form.rating, comment: form.comment }
+        await api.updateReview(editId, update)
         show('Review updated!', 'success')
         setEditId(null)
+        setIsEditingReply(false)
       } else {
         await api.createReview(eventId, payload)
         show('Review posted!', 'success')
@@ -76,8 +81,9 @@ export default function ReviewSection({ eventId }) {
     }
   }
 
-  const startEdit = (r) => {
+  const startEdit = (r, isReply = false) => {
     setEditId(r.id)
+    setIsEditingReply(isReply)
     setForm({ rating: r.rating, comment: r.comment })
     setReplyTo(null)
   }
@@ -108,12 +114,12 @@ export default function ReviewSection({ eventId }) {
           {editId && (
             <div className="alert alert-info" style={{ marginBottom: '.75rem' }}>
               Editing review
-              <button className="btn btn-ghost btn-sm" style={{ marginLeft: '.5rem' }} onClick={() => { setEditId(null); setForm({ rating: 5, comment: '' }) }}>✕</button>
+              <button className="btn btn-ghost btn-sm" style={{ marginLeft: '.5rem' }} onClick={() => { setEditId(null); setIsEditingReply(false); setForm({ rating: 5, comment: '' }) }}>✕</button>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
-            {!replyTo && (
+            {!replyTo && !isEditingReply && (
               <div className="form-group">
                 <label>Rating</label>
                 <StarRating value={form.rating} onChange={v => setForm(f => ({ ...f, rating: v }))} />
@@ -184,7 +190,10 @@ export default function ReviewSection({ eventId }) {
                           <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
                             <span className="text-muted text-sm">{format(new Date(rep.created_at), 'MMM d')}</span>
                             {isMyReply && (
-                              <button className="btn btn-danger btn-sm" onClick={() => handleDelete(rep.id)}>Delete</button>
+                              <>
+                                <button className="btn btn-ghost btn-sm" onClick={() => startEdit(rep, true)}>Edit</button>
+                                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(rep.id)}>Delete</button>
+                              </>
                             )}
                           </div>
                         </div>
