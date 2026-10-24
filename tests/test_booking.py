@@ -109,3 +109,32 @@ async def test_concurrent_booking_never_oversells(client: AsyncClient):
     event_res = await client.get(f"/api/v1/events/{event.id}")
     assert event_res.status_code == 200
     assert event_res.json()["available_tickets"] == 0
+
+
+async def test_concurrent_booking_cancellation_restores_tickets_once(
+    client: AsyncClient,
+):
+    event = await create_published_event(total_tickets=3)
+    attendee = await create_test_user(role=UserRole.ATTENDEE)
+    headers = auth_headers_for(attendee)
+
+    booking_res = await client.post(
+        "/api/v1/bookings",
+        json={"event_id": str(event.id), "ticket_count": 2},
+        headers=headers,
+    )
+    assert booking_res.status_code == 201
+    booking_id = booking_res.json()["id"]
+
+    async def cancel_booking():
+        return await client.post(
+            f"/api/v1/bookings/{booking_id}/cancel",
+            headers=headers,
+        )
+
+    responses = await asyncio.gather(cancel_booking(), cancel_booking())
+
+    assert sorted(response.status_code for response in responses) == [200, 400]
+    event_res = await client.get(f"/api/v1/events/{event.id}")
+    assert event_res.status_code == 200
+    assert event_res.json()["available_tickets"] == 3
