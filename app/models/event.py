@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
-    ARRAY,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -15,7 +14,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -31,6 +30,14 @@ class EventStatus(str, enum.Enum):
     PUBLISHED = "Published"
     CANCELLED = "Cancelled"
     COMPLETED = "Completed"
+
+    @classmethod
+    def _missing_(cls, value: object):
+        if isinstance(value, str):
+            for member in cls:
+                if member.value.lower() == value.lower() or member.name.lower() == value.lower():
+                    return member
+        return None
 
 
 class Event(Base):
@@ -70,6 +77,11 @@ class Event(Base):
     organizer: Mapped["User"] = relationship("User", back_populates="events")
     bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="event")
     reviews: Mapped[list["Review"]] = relationship("Review", back_populates="event")
+
+    @property
+    def organizer_email(self) -> str | None:
+        organizer = self.__dict__.get("organizer")
+        return organizer.email if organizer is not None else None
 
     __table_args__ = (
         CheckConstraint(

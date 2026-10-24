@@ -69,6 +69,7 @@ class EventStatusUpdate(BaseModel):
 class EventResponse(BaseModel):
     id: UUID
     organizer_id: UUID
+    organizer_email: str | None = None
     title: str
     description: str
     venue: str
@@ -97,6 +98,30 @@ class EventFilterParams(BaseModel):
     status: EventStatus | None = None
     category: str | None = None
     search: str | None = None
+    tag: str | None = None
+    min_price: Decimal | None = Field(default=None, ge=0)
+    max_price: Decimal | None = Field(default=None, ge=0)
+    sort_by: str | None = None
     date_from: datetime | None = None
     date_to: datetime | None = None
     organizer_id: UUID | None = None
+
+    @field_validator("status", "category", "search", "tag", "sort_by", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: object) -> object:
+        if v == "" or v is None:
+            return None
+        return v
+
+
+class EventStatsResponse(BaseModel):
+    total_events: int
+    published_events: int
+    draft_events: int
+    cancelled_events: int
+    total_tickets_sold: int
+    total_revenue: Decimal
+    total_bookings: int
+    total_users: int | None = None
+    total_organizers: int | None = None
+    total_attendees: int | None = None
