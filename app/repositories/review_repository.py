@@ -99,4 +99,4 @@ class ReviewRepository(BaseRepository[Review]):
         await db.commit()
 
 
-review_repository = ReviewRepository()  # singleton instance
+review_repository = ReviewRepository()  

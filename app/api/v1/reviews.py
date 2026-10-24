@@ -1,12 +1,14 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.models.notification import NotificationType
 from app.models.review import Review
 from app.models.user import User
+from app.repositories.event_repository import event_repository
 from app.repositories.review_repository import review_repository
 from app.schemas.review import (
     ReviewCreateRequest,
@@ -14,6 +16,7 @@ from app.schemas.review import (
     ReviewResponse,
     ReviewUpdateRequest,
 )
+from app.services.notification_service import notification_service
 from app.services.review_service import review_service
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
@@ -46,6 +49,7 @@ def _build_nested(reviews: list[Review]) -> list[ReviewResponse]:
 async def create_review(
     event_id: UUID,
     payload: ReviewCreateRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -57,6 +61,29 @@ async def create_review(
     )
     # Re-fetch so that the `replies` relationship is populated (empty list for new review)
     fresh = await review_repository.get_by_id(db, review.id)
+
+    # Queue notification in background
+    if payload.parent_review_id:
+        parent = await review_repository.get_by_id(db, payload.parent_review_id)
+        if parent and parent.user_id != current_user.id:
+            background_tasks.add_task(
+                notification_service.send_background_notification,
+                user_id=parent.user_id,
+                title="New Reply to Your Review",
+                message=f"{current_user.name or 'Someone'} replied to your review.",
+                notification_type=NotificationType.REVIEW,
+            )
+    else:
+        event = await event_repository.get_by_id(db, event_id)
+        if event and event.organizer_id != current_user.id:
+            background_tasks.add_task(
+                notification_service.send_background_notification,
+                user_id=event.organizer_id,
+                title="New Review on Your Event",
+                message=f"{current_user.name or 'An attendee'} left a review on '{event.title}'.",
+                notification_type=NotificationType.REVIEW,
+            )
+
     return ReviewResponse.from_orm(fresh)
 
 
