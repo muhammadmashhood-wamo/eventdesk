@@ -10,7 +10,6 @@ const ACTION_COLORS = {
   BOOKING_CREATED:       'var(--primary)',
   BOOKING_CANCELLED:     'var(--danger)',
   BOOKING_DELETED:       'var(--danger)',
-  BOOKING_DELETED:       'var(--danger)',
   USER_UPDATED_BY_ADMIN: 'var(--accent)',
   USER_DELETED_BY_ADMIN: 'var(--danger)',
 }
