@@ -21,19 +21,24 @@ export default function NotificationsPage() {
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // all | unread
+  const [typeFilter, setTypeFilter] = useState('')
   const seenNotificationIds = useRef(new Set())
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const q = filter === 'unread' ? { is_read: false, limit: 50 } : { limit: 50 }
+      const q = {
+        ...(filter === 'unread' ? { is_read: false } : {}),
+        ...(typeFilter ? { type: typeFilter } : {}),
+        limit: 50,
+      }
       const d = await api.listNotifications(q)
       seenNotificationIds.current = new Set(d.items.map((item) => item.id))
       setItems(d.items)
       setUnread(d.unread_count)
     } catch {}
     setLoading(false)
-  }, [filter])
+  }, [filter, typeFilter])
 
   useEffect(() => { load() }, [load])
 
@@ -51,11 +56,12 @@ export default function NotificationsPage() {
       }
       if (item.id && seenNotificationIds.current.has(item.id)) return
       if (item.id) seenNotificationIds.current.add(item.id)
+      if (typeFilter && (item.type || item.notification_type)?.toLowerCase() !== typeFilter.toLowerCase()) return
       setItems(prev => [item, ...prev])
       setUnread(c => c + 1)
       show(`🔔 ${item.title}: ${item.message}`, 'info')
     }
-  }, [show])
+  }, [show, typeFilter])
   useWebSocket('/ws/notifications', handleWS, !!user)
 
   const handleRead = async (id) => {
@@ -86,6 +92,19 @@ export default function NotificationsPage() {
             )}
           </div>
           <div className="flex-gap">
+            <select
+              className="form-control"
+              aria-label="Notification type"
+              value={typeFilter}
+              onChange={event => setTypeFilter(event.target.value)}
+            >
+              <option value="">All types</option>
+              <option value="Booking">Bookings</option>
+              <option value="Review">Reviews</option>
+              <option value="EventCancelled">Event cancellations</option>
+              <option value="System">System</option>
+              <option value="EventReminder">Event reminders</option>
+            </select>
             <div className="tabs" style={{ margin: 0, border: 'none', gap: 0 }}>
               {['all', 'unread'].map(f => (
                 <button key={f} className={`tab${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>

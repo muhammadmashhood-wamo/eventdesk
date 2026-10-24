@@ -39,6 +39,22 @@ async def test_notifications_crud_and_filtering(client: AsyncClient):
     assert data["total"] == 2
     assert data["unread_count"] == 2
 
+    booking_filter = await client.get(
+        "/api/v1/notifications?type=Booking",
+        headers=auth_headers_for(user),
+    )
+    assert booking_filter.status_code == 200
+    assert booking_filter.json()["total"] == 1
+    assert booking_filter.json()["items"][0]["type"] == "Booking"
+
+    review_filter = await client.get(
+        "/api/v1/notifications?type=Review",
+        headers=auth_headers_for(user),
+    )
+    assert review_filter.status_code == 200
+    assert review_filter.json()["total"] == 1
+    assert review_filter.json()["items"][0]["type"] == "Review"
+
     # 3. Mark notif1 as read
     patch_res = await client.patch(
         f"/api/v1/notifications/{notif1_id}/read",
