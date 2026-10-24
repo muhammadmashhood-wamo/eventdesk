@@ -3,15 +3,16 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_user_optional
 from app.core.database import get_db
 from app.models.notification import NotificationType
 from app.models.review import Review
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.repositories.event_repository import event_repository
 from app.repositories.review_repository import review_repository
 from app.schemas.review import (
     ReviewCreateRequest,
+    ReviewListResponse,
     ReviewReplyResponse,
     ReviewResponse,
     ReviewUpdateRequest,
@@ -29,10 +30,9 @@ def _build_nested(reviews: list[Review]) -> list[ReviewResponse]:
     """
     result: list[ReviewResponse] = []
     for parent in reviews:
-        parent_resp = ReviewResponse.from_orm(parent)
-        # SQLAlchemy has already loaded `parent.replies` via the relationship
+        parent_resp = ReviewResponse.model_validate(parent)
         parent_resp.replies = [
-            ReviewReplyResponse.from_orm(r)
+            ReviewReplyResponse.model_validate(r)
             for r in parent.replies
             if not r.is_deleted
         ]
@@ -57,12 +57,11 @@ async def create_review(
         db,
         event_id=event_id,
         user_id=current_user.id,
+        user_role=current_user.role,
         data=payload,
     )
-    # Re-fetch so that the `replies` relationship is populated (empty list for new review)
     fresh = await review_repository.get_by_id(db, review.id)
 
-    # Queue notification in background
     if payload.parent_review_id:
         parent = await review_repository.get_by_id(db, payload.parent_review_id)
         if parent and parent.user_id != current_user.id:
@@ -70,26 +69,26 @@ async def create_review(
                 notification_service.send_background_notification,
                 user_id=parent.user_id,
                 title="New Reply to Your Review",
-                message=f"{current_user.name or 'Someone'} replied to your review.",
+                message=f"{current_user.email} replied to your review.",
                 notification_type=NotificationType.REVIEW,
             )
     else:
-        event = await event_repository.get_by_id(db, event_id)
+        event = await event_repository.get_by_id_active(db, event_id)
         if event and event.organizer_id != current_user.id:
             background_tasks.add_task(
                 notification_service.send_background_notification,
                 user_id=event.organizer_id,
                 title="New Review on Your Event",
-                message=f"{current_user.name or 'An attendee'} left a review on '{event.title}'.",
+                message=f"{current_user.email} left a review on '{event.title}'.",
                 notification_type=NotificationType.REVIEW,
             )
 
-    return ReviewResponse.from_orm(fresh)
+    return ReviewResponse.model_validate(fresh)
 
 
 @router.get(
     "/events/{event_id}",
-    response_model=list[ReviewResponse],
+    response_model=ReviewListResponse,
     summary="List reviews for an event (top-level with replies nested)",
 )
 async def list_reviews(
@@ -97,11 +96,17 @@ async def list_reviews(
     skip: int = 0,
     limit: int = 20,
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
-    reviews, _ = await review_service.list_by_event(
+    reviews, total = await review_service.list_by_event(
         db, event_id=event_id, skip=skip, limit=limit
     )
-    return _build_nested(reviews)
+    return ReviewListResponse(
+        items=_build_nested(reviews),
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.patch(
@@ -119,7 +124,7 @@ async def update_review(
     if not review or review.is_deleted:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    if review.user_id != current_user.id:
+    if review.user_id != current_user.id and current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to modify this review",
@@ -127,7 +132,7 @@ async def update_review(
 
     updated = await review_service.update_review(db, review=review, data=payload)
     fresh = await review_repository.get_by_id(db, updated.id)
-    return ReviewResponse.from_orm(fresh)
+    return ReviewResponse.model_validate(fresh)
 
 
 @router.delete(
@@ -144,7 +149,7 @@ async def delete_review(
     if not review or review.is_deleted:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    if review.user_id != current_user.id:
+    if review.user_id != current_user.id and current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this review",

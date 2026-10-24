@@ -4,6 +4,9 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.review import Review
+from app.models.user import UserRole
+from app.repositories.booking_repository import booking_repository
+from app.repositories.event_repository import event_repository
 from app.repositories.review_repository import review_repository
 from app.schemas.review import ReviewCreateRequest, ReviewUpdateRequest
 
@@ -16,8 +19,16 @@ class ReviewService:
         *,
         event_id: UUID,
         user_id: UUID,
+        user_role: UserRole,
         data: ReviewCreateRequest,
     ) -> Review:
+        event = await event_repository.get_by_id_active(db, event_id)
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found",
+            )
+
         if data.parent_review_id is not None:
             parent = await review_repository.get_by_id(db, data.parent_review_id)
             if not parent or parent.is_deleted:
@@ -35,6 +46,26 @@ class ReviewService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Parent review does not belong to this event",
                 )
+            if user_role != UserRole.ADMIN and event.organizer_id != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the event organizer can reply to reviews",
+                )
+        else:
+            if event.organizer_id == user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Organizers cannot review their own events",
+                )
+            if user_role != UserRole.ADMIN:
+                booked = await booking_repository.has_confirmed_booking(
+                    db, user_id=user_id, event_id=event_id
+                )
+                if not booked:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You can only review events you have booked.",
+                    )
 
         return await review_repository.create(
             db,

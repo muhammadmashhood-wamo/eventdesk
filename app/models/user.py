@@ -20,6 +20,14 @@ class UserRole(str, enum.Enum):
     ORGANIZER = "Organizer"
     ATTENDEE = "Attendee"
 
+    @classmethod
+    def _missing_(cls, value: object):
+        if isinstance(value, str):
+            for member in cls:
+                if member.value.lower() == value.lower() or member.name.lower() == value.lower():
+                    return member
+        return None
+
 
 class User(Base):
     __tablename__ = "users"
@@ -46,3 +54,7 @@ class User(Base):
     events: Mapped[list["Event"]] = Relationship("Event", back_populates="organizer")
     bookings: Mapped[list["Booking"]] = Relationship("Booking", back_populates="user")
     reviews: Mapped[list["Review"]] = Relationship("Review", back_populates="user")
+
+    @property
+    def name(self) -> str:
+        return self.email.split("@")[0]

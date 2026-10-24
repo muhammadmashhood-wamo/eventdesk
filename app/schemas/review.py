@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ReviewBase(BaseModel):
     comment: str = Field(..., min_length=1, max_length=1000)
 
-    @validator("comment")
+    @field_validator("comment")
+    @classmethod
     def strip_comment(cls, v: str) -> str:
         return v.strip()
 
@@ -43,7 +44,8 @@ class ReviewUpdateRequest(BaseModel):
         None, min_length=1, max_length=1000, description="New comment text"
     )
 
-    @validator("comment")
+    @field_validator("comment")
+    @classmethod
     def strip_comment(cls, v: str | None) -> str | None:
         return v.strip() if v is not None else v
 
@@ -51,6 +53,8 @@ class ReviewUpdateRequest(BaseModel):
 class ReviewReplyResponse(BaseModel):
     id: UUID
     user_id: UUID
+    user_email: str | None = None
+    user_name: str | None = None
     event_id: UUID
     parent_review_id: UUID
     rating: int | None = None
@@ -59,13 +63,14 @@ class ReviewReplyResponse(BaseModel):
     created_at: datetime
     updated_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReviewResponse(BaseModel):
     id: UUID
     user_id: UUID
+    user_email: str | None = None
+    user_name: str | None = None
     event_id: UUID
     parent_review_id: UUID | None = None
     rating: int | None = None
@@ -75,5 +80,11 @@ class ReviewResponse(BaseModel):
     updated_at: datetime | None = None
     replies: list[ReviewReplyResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReviewListResponse(BaseModel):
+    items: list[ReviewResponse]
+    total: int
+    skip: int
+    limit: int

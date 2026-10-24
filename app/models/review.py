@@ -48,6 +48,18 @@ class Review(Base):
     )
     replies: Mapped[list["Review"]] = relationship("Review", back_populates="parent")
 
+    @property
+    def user_email(self) -> str | None:
+        user = self.__dict__.get("user")
+        return user.email if user is not None else None
+
+    @property
+    def user_name(self) -> str | None:
+        user = self.__dict__.get("user")
+        if user is not None:
+            return getattr(user, "name", user.email.split("@")[0])
+        return None
+
     __table_args__ = (
         CheckConstraint("rating >= 1 AND rating <= 5", name="check_valid_rating_range"),
     )
