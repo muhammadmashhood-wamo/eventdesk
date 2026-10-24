@@ -1,10 +1,3 @@
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
-
-Currently, two official plugins are available:
-
-
 # EventDesk Frontend
 
 React application for discovering events and managing bookings, reviews, notifications, and organizer/admin workflows. It uses the FastAPI API in the repository and live WebSocket channels for ticket and notification updates.
