@@ -155,3 +155,58 @@ async def test_all_roles_can_book_published_events(client: AsyncClient):
 
     event_res = await client.get(f"/api/v1/events/{event.id}")
     assert event_res.json()["available_tickets"] == 0
+
+
+async def test_booking_delete_soft_deletes_and_restores_inventory(client: AsyncClient):
+    event = await create_published_event(total_tickets=3)
+    attendee = await create_test_user(role=UserRole.ATTENDEE)
+    other_attendee = await create_test_user(role=UserRole.ATTENDEE)
+    booking_res = await client.post(
+        "/api/v1/bookings",
+        json={"event_id": str(event.id), "ticket_count": 2},
+        headers=auth_headers_for(attendee),
+    )
+    assert booking_res.status_code == 201
+    booking_id = booking_res.json()["id"]
+
+    forbidden = await client.delete(
+        f"/api/v1/bookings/{booking_id}",
+        headers=auth_headers_for(other_attendee),
+    )
+    assert forbidden.status_code == 403
+
+    deleted = await client.delete(
+        f"/api/v1/bookings/{booking_id}",
+        headers=auth_headers_for(attendee),
+    )
+    assert deleted.status_code == 204
+
+    event_res = await client.get(f"/api/v1/events/{event.id}")
+    assert event_res.json()["available_tickets"] == 3
+    bookings_res = await client.get(
+        "/api/v1/bookings",
+        headers=auth_headers_for(attendee),
+    )
+    assert all(item["id"] != booking_id for item in bookings_res.json()["items"])
+
+    admin = await create_test_user(role=UserRole.ADMIN)
+    admin_booking_res = await client.post(
+        "/api/v1/bookings",
+        json={"event_id": str(event.id), "ticket_count": 1},
+        headers=auth_headers_for(attendee),
+    )
+    assert admin_booking_res.status_code == 201
+    admin_booking_id = admin_booking_res.json()["id"]
+    admin_delete = await client.delete(
+        f"/api/v1/bookings/{admin_booking_id}",
+        headers=auth_headers_for(admin),
+    )
+    assert admin_delete.status_code == 204
+    event_res = await client.get(f"/api/v1/events/{event.id}")
+    assert event_res.json()["available_tickets"] == 3
+
+    repeated = await client.delete(
+        f"/api/v1/bookings/{booking_id}",
+        headers=auth_headers_for(attendee),
+    )
+    assert repeated.status_code == 404

@@ -41,6 +41,13 @@ async def create_booking(
         available_tickets=booking.event.available_tickets,
     )
     background_tasks.add_task(
+        notification_service.send_background_notification,
+        user_id=booking.user_id,
+        title="Booking Deleted",
+        message=f"Your booking for '{booking.event.title}' was deleted and the tickets were released.",
+        notification_type=NotificationType.BOOKING,
+    )
+    background_tasks.add_task(
         audit_service.log_background,
         user_id=current_user.id,
         action="BOOKING_CREATED",
@@ -103,3 +110,36 @@ async def cancel_booking(
     )
 
     return booking
+
+
+@router.delete("/{booking_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_booking(
+    booking_id: UUID,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    booking = await booking_service.delete_booking(
+        db,
+        booking_id=booking_id,
+        current_user=current_user,
+    )
+    background_tasks.add_task(
+        manager.broadcast_event_ticket_update,
+        event_id=booking.event_id,
+        available_tickets=booking.event.available_tickets,
+    )
+    background_tasks.add_task(
+        notification_service.send_background_notification,
+        user_id=booking.user_id,
+        title="Booking Deleted",
+        message=f"Your booking for '{booking.event.title}' was deleted and the tickets were released.",
+        notification_type=NotificationType.BOOKING,
+    )
+    background_tasks.add_task(
+        audit_service.log_background,
+        user_id=current_user.id,
+        action="BOOKING_DELETED",
+        details=f"Soft-deleted booking {booking.id} for event '{booking.event.title}'",
+    )
+    return None

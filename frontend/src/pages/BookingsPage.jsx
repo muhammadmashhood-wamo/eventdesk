@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Ticket, X } from 'lucide-react'
+import { Ticket, Trash2, X } from 'lucide-react'
 import { api } from '../api'
 import { useToast } from '../context/ToastContext'
 
@@ -31,6 +31,17 @@ export default function BookingsPage() {
     try {
       await api.cancelBooking(id)
       show('Booking cancelled', 'success')
+      load()
+    } catch (err) {
+      show(err.message, 'error')
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this booking? The record will be hidden and confirmed tickets will be released.')) return
+    try {
+      await api.deleteBooking(id)
+      show('Booking deleted', 'success')
       load()
     } catch (err) {
       show(err.message, 'error')
@@ -104,6 +115,9 @@ export default function BookingsPage() {
                               <X size={13} /> Cancel
                             </button>
                           )}
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(b.id)}>
+                            <Trash2 size={13} /> Delete
+                          </button>
                         </td>
                       </tr>
                     ))}

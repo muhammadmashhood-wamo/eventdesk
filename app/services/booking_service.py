@@ -76,6 +76,35 @@ class BookingService:
         booking_id: UUID,
         current_user: User,
         ) -> Booking:
+        return await self._change_booking_state(
+            db,
+            booking_id=booking_id,
+            current_user=current_user,
+            soft_delete=False,
+        )
+
+    async def delete_booking(
+        self,
+        db: AsyncSession,
+        *,
+        booking_id: UUID,
+        current_user: User,
+    ) -> Booking:
+        return await self._change_booking_state(
+            db,
+            booking_id=booking_id,
+            current_user=current_user,
+            soft_delete=True,
+        )
+
+    async def _change_booking_state(
+        self,
+        db: AsyncSession,
+        *,
+        booking_id: UUID,
+        current_user: User,
+        soft_delete: bool,
+    ) -> Booking:
         booking = await booking_repository.get_by_id_active_for_update(db,booking_id)
         if not booking:
             raise HTTPException(
@@ -87,18 +116,22 @@ class BookingService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only cancel your own bookings",
             )
-        if booking.status == BookingStatus.CANCELLED:
+        if booking.status == BookingStatus.CANCELLED and not soft_delete:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Booking is already cancelled",
             )
-        
-        event = await event_repository.get_by_id_for_update(db,booking.event_id)
-        if event:
-            event.available_tickets += booking.ticket_count
+
+        if booking.status == BookingStatus.CONFIRMED:
+            event = await event_repository.get_by_id_for_update(db,booking.event_id)
+            if event:
+                event.available_tickets += booking.ticket_count
 
         booking.status = BookingStatus.CANCELLED
+        booking.is_deleted = soft_delete
         await booking_repository.update(db, booking)
+        if soft_delete:
+            return booking
         updated_booking = await booking_repository.get_by_id_active(db, booking.id)
         return updated_booking or booking
 

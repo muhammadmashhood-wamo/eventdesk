@@ -166,6 +166,7 @@ export const api = {
   listBookings: (query) => request('/bookings', { query }),
   createBooking: (payload) => request('/bookings', { method: 'POST', body: payload }),
   cancelBooking: (bookingId) => request(`/bookings/${bookingId}/cancel`, { method: 'POST' }),
+  deleteBooking: (bookingId) => request(`/bookings/${bookingId}`, { method: 'DELETE' }),
 
   listNotifications: (query) => request('/notifications', { query }),
   markNotificationRead: (notificationId) => request(`/notifications/${notificationId}/read`, { method: 'PATCH' }),
