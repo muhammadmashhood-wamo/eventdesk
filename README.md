@@ -62,16 +62,14 @@ npm run lint
 
 - Email/password registration and login, hashed passwords, JWT access/refresh tokens, and role-protected routes.
 - Event creation and management, discovery filters, sorting, pagination, and organizer/admin stats.
-- Ticket bookings with row-level locking to prevent overselling, plus booking cancellation.
-- Reviews, one-level replies, review moderation, notifications, and audit logs.
+- Ticket bookings for all roles with row-level locking to prevent overselling, plus cancellation and soft deletion.
+- Display names, profile updates, admin user soft deletion, reviews, one-level replies, mentions, notifications, and audit logs.
 - WebSocket ticket and notification updates, scheduled event reminders, and automatic event completion.
 
 The data model diagram is in [event_desk_erd.png](event_desk_erd.png). The frontend endpoint map and known API limitations are documented in [frontend/ENDPOINT_COVERAGE.md](frontend/ENDPOINT_COVERAGE.md) and [frontend/BACKEND_GAPS.md](frontend/BACKEND_GAPS.md).
 
-## Known Gaps Against the Requirements
+## Remaining Gaps Against the Requirements
 
-- The written role matrix allows admins and organizers to book tickets, but the current booking service accepts attendees only. Consequently, organizers cannot book another organizer's event and leave a review as an attendee.
-- Profiles support email and password changes, but not editing a separate display name; the current user name is derived from the email address.
-- Notifications can be filtered by type through the API, but the frontend only exposes all/unread filters. Review mentions are not implemented.
-- Events support soft deletion. User and booking soft-delete fields exist, but there are no user/booking delete workflows; booking cancellation changes its status instead.
-- Password reset, MFA, payments, seat selection, and waiting lists are not implemented. Most are listed as optional bonuses in the project brief.
+- The API does not include event/entity identifiers in notification payloads, so the UI cannot always link a notification directly to its resource.
+- There is no organizer-facing attendee list or export endpoint.
+- Password reset, MFA, payments, seat selection, waiting lists, and recurring events are not implemented; these are optional bonuses in the brief.

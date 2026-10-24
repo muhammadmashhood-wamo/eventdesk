@@ -4,7 +4,7 @@ This file maps each backend route or websocket to the page or component that con
 
 | Endpoint | Method | Used by | Notes |
 | --- | --- | --- | --- |
-| `/api/v1/auth/register` | POST | Register page | User self-registration for attendee/organizer roles |
+| `/api/v1/auth/register` | POST | Register page | User self-registration for attendee/organizer roles, with optional display name |
 | `/api/v1/auth/login` | POST | Login page | Login and session initialization |
 | `/api/v1/auth/refresh` | POST | API client refresh flow | Replaces expired access token and refresh token |
 | `/api/v1/auth/logout` | POST | Navbar / AuthContext | Stateless logout and local state cleanup |
@@ -18,16 +18,18 @@ This file maps each backend route or websocket to the page or component that con
 | `/api/v1/events/dashboard` | GET | My Events page | Organizer dashboard stats |
 | `/api/v1/bookings` | POST | Event detail page | Ticket booking action |
 | `/api/v1/bookings` | GET | Bookings page | Currrent-user bookings list |
-| `/api/v1/bookings/{booking_id}/cancel` | POST | Bookings page | Cancel booking |
-| `/api/v1/users/me` | PATCH | Profile page | Update email |
+| `/api/v1/bookings/{booking_id}/cancel` | POST | Bookings page | Cancel booking and release tickets |
+| `/api/v1/bookings/{booking_id}` | DELETE | Bookings page | Soft-delete own booking or any booking as admin |
+| `/api/v1/users/me` | PATCH | Profile page | Update display name and email |
 | `/api/v1/users/me/change-password` | POST | Profile page | Change password |
 | `/api/v1/users` | GET | Admin users table | List users for admin management |
 | `/api/v1/users/{user_id}` | PATCH | Admin users table | Change role or active state |
+| `/api/v1/users/{user_id}` | DELETE | Admin users table | Soft-delete another user |
 | `/api/v1/reviews/events/{event_id}` | GET | Event detail page | Event reviews list |
-| `/api/v1/reviews/events/{event_id}` | POST | Event detail page | Top-level review or reply |
+| `/api/v1/reviews/events/{event_id}` | POST | Event detail page | Booked-user review or permitted reply; `@email` mentions notify matching users |
 | `/api/v1/reviews/{review_id}` | PATCH | Event detail page | Edit user review |
 | `/api/v1/reviews/{review_id}` | DELETE | Event detail page | Delete user review |
-| `/api/v1/notifications` | GET | Notifications page, Navbar | Unread count and list |
+| `/api/v1/notifications` | GET | Notifications page, Navbar | Unread count and list filtered by read status or notification type |
 | `/api/v1/notifications/{id}/read` | PATCH | Notifications page | Mark single notification as read |
 | `/api/v1/notifications/{id}/unread` | PATCH | Notifications page | Mark single notification as unread |
 | `/api/v1/notifications/read-all` | POST | Notifications page | Mark all seen |
