@@ -1,6 +1,7 @@
 from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.websockets import manager
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.user import User
@@ -10,8 +11,9 @@ from app.schemas.booking import (
     BookingResponse,
 )
 from app.models.notification import NotificationType
-from app.services.notification_service import notification_service
+from app.services.audit_service import audit_service
 from app.services.booking_service import booking_service
+from app.services.notification_service import notification_service
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 @router.post(
@@ -32,6 +34,17 @@ async def create_booking(
         title="Booking Confirmed",
         message=f"You successfully booked {payload.ticket_count} ticket(s) for '{booking.event.title}'.",
         notification_type=NotificationType.BOOKING,
+    )
+    background_tasks.add_task(
+        manager.broadcast_event_ticket_update,
+        event_id=booking.event_id,
+        available_tickets=booking.event.available_tickets,
+    )
+    background_tasks.add_task(
+        audit_service.log_background,
+        user_id=current_user.id,
+        action="BOOKING_CREATED",
+        details=f"Booked {payload.ticket_count} ticket(s) for event '{booking.event.title}' (Booking ID: {booking.id})",
     )
     return booking
 
@@ -69,7 +82,12 @@ async def cancel_booking(
     booking = await booking_service.cancel_booking(
         db, booking_id=booking_id, current_user=current_user
     )
-    # Queue notification in the background
+    background_tasks.add_task(
+        manager.broadcast_event_ticket_update,
+        event_id=booking.event_id,
+        available_tickets=booking.event.available_tickets,
+    )
+
     background_tasks.add_task(
         notification_service.send_background_notification,
         user_id=booking.user_id,
@@ -77,4 +95,11 @@ async def cancel_booking(
         message=f"Your booking for '{booking.event.title}' has been cancelled.",
         notification_type=NotificationType.BOOKING,
     )
+    background_tasks.add_task(
+        audit_service.log_background,
+        user_id=current_user.id,
+        action="BOOKING_CANCELLED",
+        details=f"Cancelled booking {booking.id} for event '{booking.event.title}'",
+    )
+
     return booking

@@ -13,6 +13,7 @@ from app.schemas.event import (
     EventResponse,
     EventUpdateRequest,
 )
+from app.services.audit_service import audit_service
 from app.services.event_service import event_service
 from app.services.notification_service import notification_service
 
@@ -27,10 +28,18 @@ router = APIRouter(prefix="/events", tags=["Events"])
 )
 async def create_event(
     payload: EventCreateRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.ORGANIZER])),
 ):
-    return await event_service.create_event(db, data=payload, organizer=current_user)
+    event = await event_service.create_event(db, data=payload, organizer=current_user)
+    background_tasks.add_task(
+        audit_service.log_background,
+        user_id=current_user.id,
+        action="EVENT_CREATED",
+        details=f"Created event '{event.title}' (ID: {event.id})",
+    )
+    return event
 
 
 @router.get("", response_model=EventListResponse)
@@ -79,6 +88,12 @@ async def cancel_event(
         notification_service.notify_event_cancelled,
         event_id=cancelled_event.id,
         event_title=cancelled_event.title,
+    )
+    background_tasks.add_task(
+        audit_service.log_background,
+        user_id=current_user.id,
+        action="EVENT_CANCELLED",
+        details=f"Cancelled event '{cancelled_event.title}' (ID: {cancelled_event.id})",
     )
     return cancelled_event
 
