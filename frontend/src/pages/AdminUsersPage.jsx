@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
-import { Users, Shield, Check, X } from 'lucide-react'
+import { Users, Shield, Check, Trash2, X } from 'lucide-react'
 import { api } from '../api'
 import { useToast } from '../context/ToastContext'
 
@@ -28,6 +28,17 @@ export default function AdminUsersPage() {
     try {
       await api.updateUser(id, payload)
       show('User updated', 'success')
+      load()
+    } catch (err) {
+      show(err.message, 'error')
+    }
+  }
+
+  const deleteUser = async (user) => {
+    if (!confirm(`Delete ${user.email}? This is a soft delete.`)) return
+    try {
+      await api.deleteUser(user.id)
+      show('User deleted', 'success')
       load()
     } catch (err) {
       show(err.message, 'error')
@@ -91,6 +102,14 @@ export default function AdminUsersPage() {
                             onClick={() => updateUser(u.id, { is_active: !u.is_active })}
                           >
                             {u.is_active ? <><X size={13} /> Deactivate</> : <><Check size={13} /> Activate</>}
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            style={{ marginLeft: '.4rem' }}
+                            onClick={() => deleteUser(u)}
+                            title="Soft delete user"
+                          >
+                            <Trash2 size={13} /> Delete
                           </button>
                         </td>
                       </tr>

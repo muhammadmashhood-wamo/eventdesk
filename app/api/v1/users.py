@@ -71,4 +71,24 @@ async def admin_update_user(
         details=f"Admin updated user {user_id}: changed {details_str}",
     )
     return updated_user
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_user(
+    user_id: UUID,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.ADMIN])),
+):
+    deleted_user = await user_service.admin_delete_user(
+        db,
+        target_user_id=user_id,
+        current_admin=current_user,
+    )
+    background_tasks.add_task(
+        audit_service.log_background,
+        user_id=current_user.id,
+        action="USER_DELETED_BY_ADMIN",
+        details=f"Admin soft-deleted user {deleted_user.id}",
+    )
     

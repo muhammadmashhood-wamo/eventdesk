@@ -179,6 +179,7 @@ export const api = {
 
   listUsers: (query) => request('/users', { query }),
   updateUser: (userId, payload) => request(`/users/${userId}`, { method: 'PATCH', body: payload }),
+  deleteUser: (userId) => request(`/users/${userId}`, { method: 'DELETE' }),
   updateProfile: (payload) => request('/users/me', { method: 'PATCH', body: payload }),
   changePassword: (payload) => request('/users/me/change-password', { method: 'POST', body: payload }),
 

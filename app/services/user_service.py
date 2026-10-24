@@ -77,4 +77,26 @@ class UserService:
             
         return await user_repository.update(db,target_user)
 
+    async def admin_delete_user(
+        self,
+        db: AsyncSession,
+        *,
+        target_user_id: UUID,
+        current_admin: User,
+    ) -> User:
+        target_user = await user_repository.get_by_id(db, target_user_id)
+        if not target_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        if target_user.id == current_admin.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Admins cannot delete their own account.",
+            )
+        target_user.is_deleted = True
+        target_user.is_active = False
+        return await user_repository.update(db, target_user)
+
 user_service = UserService()

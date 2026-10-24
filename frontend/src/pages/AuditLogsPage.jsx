@@ -10,6 +10,7 @@ const ACTION_COLORS = {
   BOOKING_CREATED:       'var(--primary)',
   BOOKING_CANCELLED:     'var(--danger)',
   USER_UPDATED_BY_ADMIN: 'var(--accent)',
+  USER_DELETED_BY_ADMIN: 'var(--danger)',
 }
 
 export default function AuditLogsPage() {
@@ -62,6 +63,7 @@ export default function AuditLogsPage() {
             <option value="BOOKING_CREATED">Booking Created</option>
             <option value="BOOKING_CANCELLED">Booking Cancelled</option>
             <option value="USER_UPDATED_BY_ADMIN">User Updated by Admin</option>
+            <option value="USER_DELETED_BY_ADMIN">User Deleted by Admin</option>
           </select>
         </div>
 

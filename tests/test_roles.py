@@ -70,3 +70,31 @@ async def test_role_admin_user_management(client: AsyncClient):
     )
     assert res_admin_change.status_code == 200
     assert res_admin_change.json()["role"] == "Organizer"
+
+
+async def test_admin_soft_deletes_users(client: AsyncClient):
+    admin = await create_test_user(role=UserRole.ADMIN)
+    attendee = await create_test_user(role=UserRole.ATTENDEE)
+    admin_headers = auth_headers_for(admin)
+    attendee_headers = auth_headers_for(attendee)
+
+    forbidden = await client.delete(
+        f"/api/v1/users/{attendee.id}",
+        headers=attendee_headers,
+    )
+    assert forbidden.status_code == 403
+
+    deleted = await client.delete(
+        f"/api/v1/users/{attendee.id}",
+        headers=admin_headers,
+    )
+    assert deleted.status_code == 204
+
+    deleted_user_me = await client.get("/api/v1/auth/me", headers=attendee_headers)
+    assert deleted_user_me.status_code == 401
+
+    self_delete = await client.delete(
+        f"/api/v1/users/{admin.id}",
+        headers=admin_headers,
+    )
+    assert self_delete.status_code == 400
