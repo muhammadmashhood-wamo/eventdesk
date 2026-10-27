@@ -51,7 +51,7 @@ class User(Base):
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
-        onupdate=datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
     events: Mapped[list["Event"]] = Relationship("Event", back_populates="organizer")
     bookings: Mapped[list["Booking"]] = Relationship("Booking", back_populates="user")
