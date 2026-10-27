@@ -24,7 +24,6 @@ async def websocket_event_tickets(websocket: WebSocket, event_id: UUID):
     await manager.connect_event(event_id, websocket)
     try:
         while True:
-            # Keep socket open waiting for server broadcasts or ping/pong
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect_event(event_id, websocket)

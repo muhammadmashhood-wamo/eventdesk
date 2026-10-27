@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
-import { MapPin, Calendar, Tag, DollarSign, Ticket, ChevronLeft, User, Edit2, Trash2, X } from 'lucide-react'
+import { MapPin, Calendar, Tag, DollarSign, Ticket, ChevronLeft, User, Edit2, Trash2, X, Users } from 'lucide-react'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { useWebSocket } from '../hooks/useWebSocket'
 import ReviewSection from '../components/ReviewSection'
 import EventFormModal from '../components/EventFormModal'
+import EventBookingsModal from '../components/EventBookingsModal'
 
 export default function EventDetailPage() {
   const { id } = useParams()
@@ -21,6 +22,7 @@ export default function EventDetailPage() {
   const [booking, setBooking] = useState(false)
   const [error, setError] = useState('')
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [bookingsModalOpen, setBookingsModalOpen] = useState(false)
 
   const loadEvent = useCallback(() => {
     api.getEvent(id)
@@ -33,7 +35,6 @@ export default function EventDetailPage() {
     loadEvent()
   }, [loadEvent])
 
-  // Live ticket updates via WebSocket
   const handleWS = useCallback((msg) => {
     if (msg.type === 'TICKET_UPDATE') {
       setEvent(prev => prev ? { ...prev, available_tickets: msg.available_tickets } : prev)
@@ -99,6 +100,12 @@ export default function EventDetailPage() {
 
           {canManage && (
             <div style={{ display: 'flex', gap: '.5rem' }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setBookingsModalOpen(true)}
+              >
+                <Users size={14} /> View Bookings
+              </button>
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => setEditModalOpen(true)}
@@ -249,6 +256,14 @@ export default function EventDetailPage() {
           event={event}
           onClose={() => setEditModalOpen(false)}
           onSaved={() => { setEditModalOpen(false); loadEvent() }}
+        />
+      )}
+
+      {bookingsModalOpen && (
+        <EventBookingsModal
+          event={event}
+          onClose={() => setBookingsModalOpen(false)}
+          onBookingCancelled={loadEvent}
         />
       )}
     </div>

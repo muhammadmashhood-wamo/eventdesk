@@ -54,7 +54,7 @@ class Event(Base):
     venue: Mapped[str] = mapped_column(String(255), nullable=False)
     event_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        nullable=False,  # should be greater than current time and date
+        nullable=False,  
     )
     ticket_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     total_tickets: Mapped[int] = mapped_column(Integer, nullable=False)

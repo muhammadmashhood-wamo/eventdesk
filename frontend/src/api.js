@@ -167,6 +167,7 @@ export const api = {
   listCategories: () => request('/events/categories'),
 
   listBookings: (query) => request('/bookings', { query }),
+  listEventBookings: (eventId, query) => request(`/events/${eventId}/bookings`, { query }),
   createBooking: (payload) => request('/bookings', { method: 'POST', body: payload }),
   cancelBooking: (bookingId) => request(`/bookings/${bookingId}/cancel`, { method: 'POST' }),
   deleteBooking: (bookingId) => request(`/bookings/${bookingId}`, { method: 'DELETE' }),

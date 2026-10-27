@@ -18,6 +18,8 @@ class BookingResponse(BaseModel):
     status: BookingStatus
     created_at: datetime
     event: EventResponse | None = None
+    user_email: str | None = None
+    user_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

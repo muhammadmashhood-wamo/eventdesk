@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
-import { Plus, Edit2, X, Trash2, User } from 'lucide-react'
+import { Plus, Edit2, X, Trash2, User, Users } from 'lucide-react'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import EventFormModal from '../components/EventFormModal'
+import EventBookingsModal from '../components/EventBookingsModal'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -15,11 +16,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editEvent, setEditEvent] = useState(null)
+  const [bookingsEvent, setBookingsEvent] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      // If organizer, request own events by organizer_id so all statuses (Draft, etc.) are returned
       const q = user?.role === 'organizer' ? { organizer_id: user.id, limit: 100 } : { limit: 100 }
       const d = await api.listEvents(q)
       setEvents(d.items || [])
@@ -141,6 +142,13 @@ export default function DashboardPage() {
                         <div style={{ display: 'flex', gap: '.4rem' }}>
                           <button
                             className="btn btn-ghost btn-sm"
+                            title="View Bookings"
+                            onClick={() => setBookingsEvent(ev)}
+                          >
+                            <Users size={13} />
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm"
                             title="Edit Event"
                             onClick={() => { setEditEvent(ev); setModalOpen(true) }}
                             disabled={ev.status === 'Cancelled' || ev.status === 'Completed'}
@@ -180,6 +188,14 @@ export default function DashboardPage() {
           event={editEvent}
           onClose={() => setModalOpen(false)}
           onSaved={() => { setModalOpen(false); load() }}
+        />
+      )}
+
+      {bookingsEvent && (
+        <EventBookingsModal
+          event={bookingsEvent}
+          onClose={() => setBookingsEvent(null)}
+          onBookingCancelled={load}
         />
       )}
     </div>

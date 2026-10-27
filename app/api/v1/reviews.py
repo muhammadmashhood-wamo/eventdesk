@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_current_user_optional
 from app.core.database import get_db
+from app.core.websockets import manager
 from app.models.notification import NotificationType
 from app.models.review import Review
 from app.models.user import User, UserRole
@@ -102,6 +103,13 @@ async def create_review(
                 notification_type=NotificationType.REVIEW,
             )
 
+    background_tasks.add_task(
+        manager.broadcast_event_review_update,
+        event_id=event_id,
+        action="created",
+        review_id=fresh.id,
+    )
+
     return ReviewResponse.model_validate(fresh)
 
 
@@ -136,6 +144,7 @@ async def list_reviews(
 async def update_review(
     review_id: UUID,
     payload: ReviewUpdateRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -151,6 +160,12 @@ async def update_review(
 
     updated = await review_service.update_review(db, review=review, data=payload)
     fresh = await review_repository.get_by_id(db, updated.id)
+    background_tasks.add_task(
+        manager.broadcast_event_review_update,
+        event_id=review.event_id,
+        action="updated",
+        review_id=fresh.id,
+    )
     return ReviewResponse.model_validate(fresh)
 
 
@@ -161,6 +176,7 @@ async def update_review(
 )
 async def delete_review(
     review_id: UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -175,3 +191,9 @@ async def delete_review(
         )
 
     await review_service.delete_review(db, review=review)
+    background_tasks.add_task(
+        manager.broadcast_event_review_update,
+        event_id=review.event_id,
+        action="deleted",
+        review_id=review.id,
+    )

@@ -20,7 +20,6 @@ from sqlalchemy.pool import NullPool
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    future=True,
     poolclass=NullPool if os.getenv("TESTING") else None,
 )
 

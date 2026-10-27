@@ -44,7 +44,38 @@ class BookingRepository(BaseRepository[Booking]):
         total = (await db.execute(count_stmt)).scalar_one()
         row_stmt = (
             select(Booking)
-            .options(selectinload(Booking.event).selectinload(Event.organizer))
+            .options(
+                selectinload(Booking.event).selectinload(Event.organizer),
+                selectinload(Booking.user),
+            )
+            .where(*filters)
+            .order_by(Booking.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+
+        rows = list((await db.execute(row_stmt)).scalars().all())
+
+        return rows, total
+
+    async def list_event_bookings(
+        self,
+        db: AsyncSession,
+        *,
+        event_id: UUID,
+        skip: int = 0,
+        limit: int = 20
+    ) -> tuple[list[Booking], int]:
+        filters = [Booking.event_id == event_id, Booking.is_deleted.is_(False)]
+
+        count_stmt = select(func.count()).select_from(Booking).where(*filters)
+        total = (await db.execute(count_stmt)).scalar_one()
+        row_stmt = (
+            select(Booking)
+            .options(
+                selectinload(Booking.event).selectinload(Event.organizer),
+                selectinload(Booking.user),
+            )
             .where(*filters)
             .order_by(Booking.created_at.desc())
             .offset(skip)

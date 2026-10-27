@@ -263,3 +263,49 @@ async def test_review_mentions_notify_matching_users_once(client: AsyncClient):
         item["title"] == "You were mentioned in a review"
         for item in reviewer_notifications.json()["items"]
     )
+
+
+async def test_review_creation_broadcasts_update(client: AsyncClient, monkeypatch):
+    organizer = await create_test_user(role=UserRole.ORGANIZER)
+    reviewer = await create_test_user(role=UserRole.ATTENDEE)
+
+    future_date = (datetime.now(timezone.utc) + timedelta(days=5)).isoformat()
+    event_res = await client.post(
+        "/api/v1/events",
+        json={
+            "title": f"Live Gig {uuid.uuid4().hex[:6]}",
+            "description": "Live music event",
+            "venue": "Club",
+            "event_date": future_date,
+            "total_tickets": 20,
+            "ticket_price": 10,
+            "status": "Published",
+        },
+        headers=auth_headers_for(organizer),
+    )
+    event_id = event_res.json()["id"]
+
+    await client.post(
+        "/api/v1/bookings",
+        json={"event_id": event_id, "ticket_count": 1},
+        headers=auth_headers_for(reviewer),
+    )
+
+    broadcasts = []
+
+    async def fake_broadcast(event_id, action, review_id=None):
+        broadcasts.append({"event_id": str(event_id), "action": action, "review_id": str(review_id) if review_id else None})
+
+    from app.core.websockets import manager
+    monkeypatch.setattr(manager, "broadcast_event_review_update", fake_broadcast)
+
+    review_res = await client.post(
+        f"/api/v1/reviews/events/{event_id}",
+        json={"rating": 5, "comment": "Great show!"},
+        headers=auth_headers_for(reviewer),
+    )
+    assert review_res.status_code == 201
+    assert len(broadcasts) == 1
+    assert broadcasts[0]["action"] == "created"
+    assert broadcasts[0]["event_id"] == event_id
+
