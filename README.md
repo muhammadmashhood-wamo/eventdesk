@@ -1,6 +1,6 @@
 # EventDesk
 
-EventDesk is an event discovery and ticket booking application. The backend is a FastAPI service backed by PostgreSQL; the React frontend is a small browser client for attendee, organizer, and admin workflows.
+EventDesk is an event discovery and ticket booking application. The backend is a FastAPI service backed by PostgreSQL; the React frontend is a browser client for attendee, organizer, and admin workflows.
 
 ## Requirements
 
@@ -10,13 +10,14 @@ EventDesk is an event discovery and ticket booking application. The backend is a
 
 ## Setup
 
-Create a local environment file and update its database URL and secret key:
+### Backend
+
+Create a local environment file in `backend/` and update its database URL and secret key:
 
 ```sh
+cd backend
 cp .env.example .env
 ```
-
-Do not use the example secret key outside local development. Keep `.env` local; it is ignored by Git.
 
 Install Python dependencies and apply database migrations:
 
@@ -25,13 +26,15 @@ uv sync --all-groups
 uv run alembic upgrade head
 ```
 
-Start the API from the repository root:
+Start the API:
 
 ```sh
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API documentation is available at `http://localhost:8000/docs`; the OpenAPI document is at `http://localhost:8000/api/v1/openapi.json`.
+
+### Frontend
 
 Start the React client in a second terminal:
 
@@ -45,15 +48,17 @@ The frontend defaults to `http://localhost:8000/api/v1` and `ws://localhost:8000
 
 ## Tests and Checks
 
-Run the backend test suite from the repository root:
+Run the backend test suite from `backend/`:
 
 ```sh
+cd backend
 uv run pytest -q
 ```
 
 Run the frontend checks from `frontend/`:
 
 ```sh
+cd frontend
 npm run build
 npm run lint
 ```
