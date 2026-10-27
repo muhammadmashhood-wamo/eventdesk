@@ -152,7 +152,10 @@ export const api = {
   register: (payload) => request('/auth/register', { method: 'POST', body: payload, noAuth: true }),
   login: (payload) => request('/auth/login', { method: 'POST', body: payload, noAuth: true }),
   refresh: (payload) => request('/auth/refresh', { method: 'POST', body: payload, noAuth: true, skipRefresh: true }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
+  logout: (payload) => request('/auth/logout', {
+    method: 'POST',
+    body: payload || (getRefreshToken() ? { refresh_token: getRefreshToken() } : undefined),
+  }),
   me: () => request('/auth/me'),
 
   listEvents: (query) => request('/events', { query }),

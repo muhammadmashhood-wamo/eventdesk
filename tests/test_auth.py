@@ -19,14 +19,12 @@ async def test_register_success(client: AsyncClient):
 
 
 async def test_register_weak_password_rejected(client: AsyncClient):
-    # Too short
     res_short = await client.post(
         "/api/v1/auth/register",
         json={"email": "short@example.com", "password": "weak"},
     )
     assert res_short.status_code == 422
 
-    # Missing uppercase / special char
     res_no_special = await client.post(
         "/api/v1/auth/register",
         json={"email": "nospecial@example.com", "password": "password123"},
@@ -50,13 +48,11 @@ async def test_login_success_and_refresh(client: AsyncClient):
     email = f"user_{uuid.uuid4().hex[:8]}@example.com"
     password = "StrongPassword123!"
 
-    # 1. Register
     reg_res = await client.post(
         "/api/v1/auth/register", json={"email": email, "password": password}
     )
     assert reg_res.status_code == 201
 
-    # 2. Login
     login_res = await client.post(
         "/api/v1/auth/login", json={"email": email, "password": password}
     )
@@ -66,7 +62,6 @@ async def test_login_success_and_refresh(client: AsyncClient):
     assert "refresh_token" in tokens
     assert tokens["token_type"] == "bearer"
 
-    # 3. Refresh Token
     refresh_res = await client.post(
         "/api/v1/auth/refresh",
         json={"refresh_token": tokens["refresh_token"]},
@@ -115,3 +110,87 @@ async def test_user_can_register_and_update_display_name(client: AsyncClient):
     )
     assert updated.status_code == 200
     assert updated.json()["name"] == "Event Host"
+
+
+async def test_refresh_token_rotation_invalidates_previous_token(client: AsyncClient):
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    password = "StrongPassword123!"
+
+    await client.post(
+        "/api/v1/auth/register", json={"email": email, "password": password}
+    )
+    login_res = await client.post(
+        "/api/v1/auth/login", json={"email": email, "password": password}
+    )
+    initial_tokens = login_res.json()
+
+    first_refresh = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": initial_tokens["refresh_token"]},
+    )
+    assert first_refresh.status_code == 200
+
+    second_refresh = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": initial_tokens["refresh_token"]},
+    )
+    assert second_refresh.status_code == 401
+
+
+async def test_refresh_token_reuse_detection_revokes_family(client: AsyncClient):
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    password = "StrongPassword123!"
+
+    await client.post(
+        "/api/v1/auth/register", json={"email": email, "password": password}
+    )
+    login_res = await client.post(
+        "/api/v1/auth/login", json={"email": email, "password": password}
+    )
+    initial_tokens = login_res.json()
+
+    first_refresh = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": initial_tokens["refresh_token"]},
+    )
+    assert first_refresh.status_code == 200
+    rotated_tokens = first_refresh.json()
+
+    stolen_replay = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": initial_tokens["refresh_token"]},
+    )
+    assert stolen_replay.status_code == 401
+
+    legitimate_attempt = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": rotated_tokens["refresh_token"]},
+    )
+    assert legitimate_attempt.status_code == 401
+
+
+async def test_logout_revokes_refresh_token(client: AsyncClient):
+    email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    password = "StrongPassword123!"
+
+    await client.post(
+        "/api/v1/auth/register", json={"email": email, "password": password}
+    )
+    login_res = await client.post(
+        "/api/v1/auth/login", json={"email": email, "password": password}
+    )
+    tokens = login_res.json()
+
+    logout_res = await client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": tokens["refresh_token"]},
+        headers={"Authorization": f"Bearer {tokens['access_token']}"},
+    )
+    assert logout_res.status_code == 200
+
+    refresh_res = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": tokens["refresh_token"]},
+    )
+    assert refresh_res.status_code == 401
+

@@ -64,6 +64,10 @@ class TokenRefreshRequest(BaseModel):
     refresh_token: str
 
 
+class UserLogoutRequest(BaseModel):
+    refresh_token: str | None = None
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

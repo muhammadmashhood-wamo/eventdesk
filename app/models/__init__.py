@@ -2,6 +2,7 @@ from app.models.audit import AuditLog
 from app.models.booking import Booking, BookingStatus
 from app.models.event import Event, EventStatus
 from app.models.notification import Notification, NotificationType
+from app.models.refresh_token import RefreshToken
 from app.models.review import Review
 from app.models.user import User, UserRole
 
@@ -16,4 +17,5 @@ __all__ = [
     "Notification",
     "NotificationType",
     "AuditLog",
+    "RefreshToken",
 ]
