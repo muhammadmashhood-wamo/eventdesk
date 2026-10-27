@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import hash_password, verify_password
 from app.models.user import User, UserRole
+from app.repositories.refresh_token_repository import refresh_token_repository
 from app.repositories.user_repository import user_repository
 from app.schemas.user import (
     UserAdminUpdateRequest,
@@ -39,7 +40,8 @@ class UserService:
                 detail="New password cannot be the same as the current password.",
             )
         current_user.hashed_password = hash_password(data.new_password)
-        await user_repository.update(db,current_user)
+        await user_repository.update(db, current_user)
+        await refresh_token_repository.revoke_all_for_user(db, user_id=current_user.id)
 
     async def list_users(self, db:AsyncSession, *, skip:int = 0, limit:int = 20)-> tuple[list[User],int]:
         return await user_repository.list_users(db,skip=skip,limit=limit)

@@ -12,6 +12,7 @@ from app.core.database import Base
 if TYPE_CHECKING:
     from app.models.booking import Booking
     from app.models.event import Event
+    from app.models.refresh_token import RefreshToken
     from app.models.review import Review
 
 
@@ -55,3 +56,6 @@ class User(Base):
     events: Mapped[list["Event"]] = Relationship("Event", back_populates="organizer")
     bookings: Mapped[list["Booking"]] = Relationship("Booking", back_populates="user")
     reviews: Mapped[list["Review"]] = Relationship("Review", back_populates="user")
+    refresh_tokens: Mapped[list["RefreshToken"]] = Relationship(
+        "RefreshToken", back_populates="user", cascade="all, delete-orphan"
+    )
