@@ -210,3 +210,109 @@ async def test_booking_delete_soft_deletes_and_restores_inventory(client: AsyncC
         headers=auth_headers_for(attendee),
     )
     assert repeated.status_code == 404
+
+
+async def test_organizer_can_view_event_bookings(client: AsyncClient):
+    organizer = await create_test_user(role=UserRole.ORGANIZER)
+    other_organizer = await create_test_user(role=UserRole.ORGANIZER)
+    attendee = await create_test_user(role=UserRole.ATTENDEE)
+
+    future_date = datetime.now(timezone.utc) + timedelta(days=5)
+    async with async_session_maker() as session:
+        event = Event(
+            title=f"Concert {uuid.uuid4().hex[:6]}",
+            description="Live concert event",
+            venue="Arena",
+            event_date=future_date,
+            ticket_price=Decimal("45.00"),
+            total_tickets=10,
+            available_tickets=10,
+            status=EventStatus.PUBLISHED,
+            organizer_id=organizer.id,
+            is_deleted=False,
+        )
+        session.add(event)
+        await session.commit()
+        await session.refresh(event)
+
+    book_res = await client.post(
+        "/api/v1/bookings",
+        json={"event_id": str(event.id), "ticket_count": 2},
+        headers=auth_headers_for(attendee),
+    )
+    assert book_res.status_code == 201
+
+    organizer_view = await client.get(
+        f"/api/v1/events/{event.id}/bookings",
+        headers=auth_headers_for(organizer),
+    )
+    assert organizer_view.status_code == 200
+    data = organizer_view.json()
+    assert data["total"] == 1
+    assert data["items"][0]["ticket_count"] == 2
+    assert data["items"][0]["user_email"] == attendee.email
+
+    user_endpoint_view = await client.get(
+        f"/api/v1/users/bookings?event_id={event.id}",
+        headers=auth_headers_for(organizer),
+    )
+    assert user_endpoint_view.status_code == 200
+    assert user_endpoint_view.json()["total"] == 1
+
+    unauthorized_view = await client.get(
+        f"/api/v1/events/{event.id}/bookings",
+        headers=auth_headers_for(other_organizer),
+    )
+    assert unauthorized_view.status_code == 403
+
+
+async def test_organizer_can_cancel_attendee_booking(client: AsyncClient):
+    organizer = await create_test_user(role=UserRole.ORGANIZER)
+    other_user = await create_test_user(role=UserRole.ATTENDEE)
+    attendee = await create_test_user(role=UserRole.ATTENDEE)
+
+    future_date = datetime.now(timezone.utc) + timedelta(days=5)
+    async with async_session_maker() as session:
+        event = Event(
+            title=f"Festival {uuid.uuid4().hex[:6]}",
+            description="Outdoor festival",
+            venue="Park",
+            event_date=future_date,
+            ticket_price=Decimal("20.00"),
+            total_tickets=10,
+            available_tickets=10,
+            status=EventStatus.PUBLISHED,
+            organizer_id=organizer.id,
+            is_deleted=False,
+        )
+        session.add(event)
+        await session.commit()
+        await session.refresh(event)
+
+    book_res = await client.post(
+        "/api/v1/bookings",
+        json={"event_id": str(event.id), "ticket_count": 3},
+        headers=auth_headers_for(attendee),
+    )
+    assert book_res.status_code == 201
+    booking_id = book_res.json()["id"]
+
+    event_check = await client.get(f"/api/v1/events/{event.id}")
+    assert event_check.json()["available_tickets"] == 7
+
+    unauthorized_cancel = await client.post(
+        f"/api/v1/bookings/{booking_id}/cancel",
+        headers=auth_headers_for(other_user),
+    )
+    assert unauthorized_cancel.status_code == 403
+
+    organizer_cancel = await client.post(
+        f"/api/v1/bookings/{booking_id}/cancel",
+        headers=auth_headers_for(organizer),
+    )
+    assert organizer_cancel.status_code == 200
+    assert organizer_cancel.json()["status"] == "Cancelled"
+
+    event_restored = await client.get(f"/api/v1/events/{event.id}")
+    assert event_restored.json()["available_tickets"] == 10
+

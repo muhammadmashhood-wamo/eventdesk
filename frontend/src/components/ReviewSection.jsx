@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { useWebSocket } from '../hooks/useWebSocket'
 
 function StarRating({ value, onChange }) {
   const [hover, setHover] = useState(0)
@@ -28,7 +29,7 @@ export default function ReviewSection({ eventId }) {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ rating: 5, comment: '', parent_review_id: null })
   const [submitting, setSubmitting] = useState(false)
-  const [replyTo, setReplyTo] = useState(null) // { id, authorName }
+  const [replyTo, setReplyTo] = useState(null)
   const [editId, setEditId] = useState(null)
   const [isEditingReply, setIsEditingReply] = useState(false)
 
@@ -41,6 +42,14 @@ export default function ReviewSection({ eventId }) {
   }, [eventId])
 
   useEffect(() => { load() }, [load])
+
+  const handleWS = useCallback((msg) => {
+    if (msg.type === 'REVIEW_UPDATE' && (!msg.event_id || msg.event_id === String(eventId))) {
+      load()
+    }
+  }, [load, eventId])
+
+  useWebSocket(`/ws/events/${eventId}`, handleWS)
 
   const handleSubmit = async (e) => {
     e.preventDefault()

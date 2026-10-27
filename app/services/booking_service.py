@@ -69,13 +69,37 @@ class BookingService:
             db, user_id = current_user.id, skip = skip, limit = limit
         )
 
+    async def list_event_bookings(
+        self,
+        db: AsyncSession,
+        *,
+        event_id: UUID,
+        current_user: User,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> tuple[list[Booking], int]:
+        event = await event_repository.get_by_id(db, event_id)
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Event not found",
+            )
+        if current_user.role != UserRole.ADMIN and event.organizer_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view bookings for your own events",
+            )
+        return await booking_repository.list_event_bookings(
+            db, event_id=event_id, skip=skip, limit=limit
+        )
+
     async def cancel_booking(
         self,
         db: AsyncSession,
         *,
         booking_id: UUID,
         current_user: User,
-        ) -> Booking:
+    ) -> Booking:
         return await self._change_booking_state(
             db,
             booking_id=booking_id,
@@ -105,16 +129,19 @@ class BookingService:
         current_user: User,
         soft_delete: bool,
     ) -> Booking:
-        booking = await booking_repository.get_by_id_active_for_update(db,booking_id)
+        booking = await booking_repository.get_by_id_active_for_update(db, booking_id)
         if not booking:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Booking not found",
             )
-        if current_user.role != UserRole.ADMIN and booking.user_id != current_user.id:
+        is_owner = bool(booking.event and booking.event.organizer_id == current_user.id)
+        is_admin = current_user.role == UserRole.ADMIN
+        is_attendee = booking.user_id == current_user.id
+        if not (is_admin or is_attendee or is_owner):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only cancel your own bookings",
+                detail="You can only cancel your own bookings or bookings for events you organize",
             )
         if booking.status == BookingStatus.CANCELLED and not soft_delete:
             raise HTTPException(

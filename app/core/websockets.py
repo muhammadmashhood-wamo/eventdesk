@@ -51,4 +51,20 @@ class ConnectionManager:
             except Exception:
                 self.disconnect_event(event_id, ws)
 
+    async def broadcast_event_review_update(
+        self, event_id: UUID, action: str, review_id: UUID | None = None
+    ) -> None:
+        sockets = list(self.event_connections.get(event_id, []))
+        payload = {
+            "type": "REVIEW_UPDATE",
+            "event_id": str(event_id),
+            "action": action,
+            "review_id": str(review_id) if review_id else None,
+        }
+        for ws in sockets:
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                self.disconnect_event(event_id, ws)
+
 manager = ConnectionManager()

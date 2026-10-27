@@ -11,8 +11,10 @@ from app.schemas.user import (
     UserProfileUpdateRequest,
     UserResponse,
 )
+from app.schemas.booking import BookingListResponse
 from app.services.audit_service import audit_service
 from app.services.user_service import user_service
+from app.services.booking_service import booking_service
 router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.patch("/me",response_model=UserResponse,summary="Update own profile")
@@ -31,6 +33,22 @@ async def change_my_password(
 ):
     await user_service.change_password(db, current_user = current_user, data = payload)
     return { "detail": "Password changed successfully"}
+
+    
+@router.get("/bookings", response_model=BookingListResponse, summary="Get all bookings of an event for organizer")
+async def list_event_bookings(
+    event_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.ORGANIZER])),
+):
+    items, total = await booking_service.list_event_bookings(
+        db, event_id=event_id, current_user=current_user, skip=skip, limit=limit
+    )
+    return BookingListResponse(items=items, total=total, skip=skip, limit=limit)
+
+
 
 @router.get(
     "",response_model=UserListResponse,
@@ -91,4 +109,3 @@ async def admin_delete_user(
         action="USER_DELETED_BY_ADMIN",
         details=f"Admin soft-deleted user {deleted_user.id}",
     )
-    

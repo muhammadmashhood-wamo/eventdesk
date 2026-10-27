@@ -42,3 +42,16 @@ class Booking(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="bookings")
     event: Mapped["Event"] = relationship("Event", back_populates="bookings")
+
+    @property
+    def user_email(self) -> str | None:
+        user = self.__dict__.get("user")
+        return user.email if user is not None else None
+
+    @property
+    def user_name(self) -> str | None:
+        user = self.__dict__.get("user")
+        if user is not None:
+            return user.name or user.email.split("@")[0]
+        return None
+

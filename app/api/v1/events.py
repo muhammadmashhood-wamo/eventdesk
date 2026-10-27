@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user_optional, require_role
 from app.core.database import get_db
 from app.models.user import User, UserRole
+from app.schemas.booking import BookingListResponse
 from app.schemas.event import (
     EventCreateRequest,
     EventFilterParams,
@@ -15,10 +16,12 @@ from app.schemas.event import (
     EventUpdateRequest,
 )
 from app.services.audit_service import audit_service
+from app.services.booking_service import booking_service
 from app.services.event_service import event_service
 from app.services.notification_service import notification_service
 
 router = APIRouter(prefix="/events", tags=["Events"])
+
 
 
 @router.post(
@@ -133,3 +136,18 @@ async def delete_event(
         action="EVENT_DELETED",
         details=f"Deleted event '{deleted_event.title}' (ID: {deleted_event.id})",
     )
+
+
+@router.get("/{event_id}/bookings", response_model=BookingListResponse)
+async def list_event_bookings(
+    event_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.ORGANIZER])),
+):
+    items, total = await booking_service.list_event_bookings(
+        db, event_id=event_id, current_user=current_user, skip=skip, limit=limit
+    )
+    return BookingListResponse(items=items, total=total, skip=skip, limit=limit)
+

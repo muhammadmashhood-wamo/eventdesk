@@ -13,6 +13,11 @@ export function useWebSocket(path, onMessage, enabled = true) {
   const [status, setStatus] = useState('offline')
   const wsRef = useRef(null)
   const reconnectTimeout = useRef(null)
+  const onMessageRef = useRef(onMessage)
+
+  useEffect(() => {
+    onMessageRef.current = onMessage
+  })
 
   useEffect(() => {
     if (!enabled || !path) {
@@ -35,8 +40,8 @@ export function useWebSocket(path, onMessage, enabled = true) {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          if (typeof onMessage === 'function') {
-            onMessage(data)
+          if (typeof onMessageRef.current === 'function') {
+            onMessageRef.current(data)
           }
         } catch {
           // malformed frames are ignored as required by the backend contract
@@ -76,7 +81,7 @@ export function useWebSocket(path, onMessage, enabled = true) {
         wsRef.current.close()
       }
     }
-  }, [enabled, onMessage, path])
+  }, [enabled, path])
 
   return status
 }
