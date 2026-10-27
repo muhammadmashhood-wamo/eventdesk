@@ -35,6 +35,7 @@ class EventService:
             tags=data.tags,
         )
         created = await event_repository.create(db, obj=event)
+        await db.commit()
         return await event_repository.get_by_id_active(db, created.id) or created
 
     async def get_event(
@@ -262,7 +263,10 @@ class EventService:
         for field, value in update_data.items():
             setattr(event, field, value)
 
-        return await event_repository.update(db, event)
+        updated = await event_repository.update(db, event)
+        await db.commit()
+        await db.refresh(updated)
+        return updated
 
     async def cancel_event(
         self, db: AsyncSession, *, event_id: UUID, current_user: User
@@ -282,7 +286,10 @@ class EventService:
                 detail="Event is already cancelled",
             )
         event.status = EventStatus.CANCELLED
-        return await event_repository.update(db, event)
+        updated = await event_repository.update(db, event)
+        await db.commit()
+        await db.refresh(updated)
+        return updated
 
     async def delete_event(
         self, db: AsyncSession, *, event_id: UUID, current_user: User
@@ -302,7 +309,10 @@ class EventService:
                 detail="You can only delete your own events",
             )
         event.is_deleted = True
-        return await event_repository.update(db, event)
+        updated = await event_repository.update(db, event)
+        await db.commit()
+        await db.refresh(updated)
+        return updated
 
 
 event_service = EventService()

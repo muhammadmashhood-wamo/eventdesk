@@ -90,7 +90,7 @@ class NotificationRepository(BaseRepository[Notification]):
             .values(is_read=True)
         )
         result = await db.execute(stmt)
-        await db.commit()
+        await db.flush()
         return result.rowcount
 
 

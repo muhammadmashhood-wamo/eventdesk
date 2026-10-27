@@ -35,15 +35,13 @@ class BaseRepository(Generic[ModelType]):
 
     async def create(self, db: AsyncSession, obj: ModelType) -> ModelType:
         db.add(obj)
-        await db.commit()
-        await db.refresh(obj)
+        await db.flush()
         return obj
 
     async def update(self, db: AsyncSession, obj: ModelType) -> ModelType:
-        await db.commit()
-        await db.refresh(obj)
+        await db.flush()
         return obj
 
     async def delete(self, db: AsyncSession, obj: ModelType) -> None:
         await db.delete(obj)
-        await db.commit()
+        await db.flush()

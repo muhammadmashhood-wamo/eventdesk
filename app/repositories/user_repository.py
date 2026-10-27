@@ -36,8 +36,7 @@ class UserRepository(BaseRepository[User]):
             is_deleted=False,
         )
         db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        await db.flush()
         return user
 
     async def list_users(

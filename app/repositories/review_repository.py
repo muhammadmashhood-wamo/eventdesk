@@ -51,8 +51,7 @@ class ReviewRepository(BaseRepository[Review]):
             parent_review_id=parent_review_id,
         )
         db.add(review)
-        await db.commit()
-        await db.refresh(review)
+        await db.flush()
         return review
 
     async def list_top_level(
@@ -90,13 +89,12 @@ class ReviewRepository(BaseRepository[Review]):
             review.rating = rating
         if comment is not None:
             review.comment = comment
-        await db.commit()
-        await db.refresh(review)
+        await db.flush()
         return review
 
     async def soft_delete(self, db: AsyncSession, review: Review) -> None:
         review.is_deleted = True
-        await db.commit()
+        await db.flush()
 
 
 review_repository = ReviewRepository()  

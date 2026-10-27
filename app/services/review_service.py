@@ -66,7 +66,7 @@ class ReviewService:
                     detail="You can only review events you have booked.",
                 )
 
-        return await review_repository.create(
+        review = await review_repository.create(
             db,
             event_id=event_id,
             user_id=user_id,
@@ -74,6 +74,9 @@ class ReviewService:
             comment=data.comment,
             parent_review_id=data.parent_review_id,
         )
+        await db.commit()
+        await db.refresh(review)
+        return review
 
     async def list_by_event(
         self,
@@ -94,12 +97,15 @@ class ReviewService:
         review: Review,
         data: ReviewUpdateRequest,
     ) -> Review:
-        return await review_repository.update(
+        updated = await review_repository.update(
             db,
             review,
             rating=data.rating,
             comment=data.comment,
         )
+        await db.commit()
+        await db.refresh(updated)
+        return updated
 
     async def delete_review(
         self,
@@ -108,6 +114,7 @@ class ReviewService:
         review: Review,
     ) -> None:
         await review_repository.soft_delete(db, review)
+        await db.commit()
 
 
 review_service = ReviewService()

@@ -27,8 +27,7 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
             expires_at=expires_at,
         )
         db.add(token)
-        await db.commit()
-        await db.refresh(token)
+        await db.flush()
         return token
 
     async def get_by_jti(self, db: AsyncSession, *, jti: str) -> RefreshToken | None:
@@ -47,8 +46,7 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
         self, db: AsyncSession, *, refresh_token: RefreshToken
     ) -> RefreshToken:
         refresh_token.revoked_at = datetime.now(UTC)
-        await db.commit()
-        await db.refresh(refresh_token)
+        await db.flush()
         return refresh_token
 
     async def revoke_all_for_user(self, db: AsyncSession, *, user_id: UUID) -> int:
@@ -61,7 +59,7 @@ class RefreshTokenRepository(BaseRepository[RefreshToken]):
             .values(revoked_at=datetime.now(UTC))
         )
         result = await db.execute(stmt)
-        await db.commit()
+        await db.flush()
         return result.rowcount
 
 

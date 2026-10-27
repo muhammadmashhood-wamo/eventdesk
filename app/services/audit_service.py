@@ -14,9 +14,12 @@ class AuditService:
         action: str,
         details: str | None = None,
     ) -> AuditLog:
-        return await audit_repository.log_action(
+        log = await audit_repository.log_action(
             db, user_id=user_id, action=action, details=details
         )
+        await db.commit()
+        await db.refresh(log)
+        return log
     
     @staticmethod
     async def log_background(
@@ -25,9 +28,11 @@ class AuditService:
         details: str | None = None,
     ) -> None:
         async with async_session_maker() as session:
-            await audit_repository.log_action(
+            log = await audit_repository.log_action(
                 session, user_id=user_id, action=action, details=details
             )
+            await session.commit()
+            await session.refresh(log)
     
     async def list_logs(
         self,

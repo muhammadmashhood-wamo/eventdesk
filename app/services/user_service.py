@@ -25,7 +25,10 @@ class UserService:
                     detail="A user with this email already exists.",
                 )
             current_user.email = data.email
-        return await user_repository.update(db,current_user)
+        updated = await user_repository.update(db, current_user)
+        await db.commit()
+        await db.refresh(updated)
+        return updated
     
     async def change_password(self,db:AsyncSession,*,current_user: User, data: UserPasswordChangeRequest)->None:
         if not verify_password(data.current_password,current_user.hashed_password):
@@ -42,6 +45,7 @@ class UserService:
         current_user.hashed_password = hash_password(data.new_password)
         await user_repository.update(db, current_user)
         await refresh_token_repository.revoke_all_for_user(db, user_id=current_user.id)
+        await db.commit()
 
     async def list_users(self, db:AsyncSession, *, skip:int = 0, limit:int = 20)-> tuple[list[User],int]:
         return await user_repository.list_users(db,skip=skip,limit=limit)
@@ -77,7 +81,10 @@ class UserService:
         if data.is_active is not None:
             target_user.is_active = data.is_active
             
-        return await user_repository.update(db,target_user)
+        updated = await user_repository.update(db, target_user)
+        await db.commit()
+        await db.refresh(updated)
+        return updated
 
     async def admin_delete_user(
         self,
@@ -99,6 +106,9 @@ class UserService:
             )
         target_user.is_deleted = True
         target_user.is_active = False
-        return await user_repository.update(db, target_user)
+        updated = await user_repository.update(db, target_user)
+        await db.commit()
+        await db.refresh(updated)
+        return updated
 
 user_service = UserService()

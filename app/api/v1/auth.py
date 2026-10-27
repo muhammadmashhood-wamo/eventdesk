@@ -48,6 +48,8 @@ async def register(user_in: UserRegisterRequest, db: AsyncSession = Depends(get_
         role=user_in.role,
         name=user_in.name or user_in.email.split("@")[0],
     )
+    await db.commit()
+    await db.refresh(new_user)
     return new_user
 
 
@@ -78,6 +80,7 @@ async def login(credentials: UserLoginRequest, db: AsyncSession = Depends(get_db
         jti=jti,
         expires_at=expire,
     )
+    await db.commit()
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, token_type="bearer"
     )
@@ -122,6 +125,7 @@ async def refresh_token_endpoint(
 
     if token_record.revoked_at is not None:
         await refresh_token_repository.revoke_all_for_user(db, user_id=user.id)
+        await db.commit()
         raise credentials_exception
 
     if token_record.expires_at <= datetime.now(UTC):
@@ -147,6 +151,7 @@ async def refresh_token_endpoint(
         jti=new_jti,
         expires_at=new_expire,
     )
+    await db.commit()
     return TokenResponse(
         access_token=new_access_token,
         refresh_token=new_refresh_token,
@@ -174,10 +179,12 @@ async def logout(
                 )
             if token_record and token_record.revoked_at is None:
                 await refresh_token_repository.revoke(db, refresh_token=token_record)
+                await db.commit()
         except Exception:
             pass
     elif current_user:
         await refresh_token_repository.revoke_all_for_user(db, user_id=current_user.id)
+        await db.commit()
 
     return {"detail": "Successfully logged out."}
 

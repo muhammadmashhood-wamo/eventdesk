@@ -18,13 +18,16 @@ class NotificationService:
         message: str,
         notification_type: NotificationType,
     ) -> Notification:
-        return await notification_repository.create_notification(
+        notif = await notification_repository.create_notification(
             db,
             user_id=user_id,
             title=title,
             message=message,
             notification_type=notification_type,
         )
+        await db.commit()
+        await db.refresh(notif)
+        return notif
 
     @staticmethod
     async def send_background_notification(
@@ -34,13 +37,15 @@ class NotificationService:
         notification_type: NotificationType,
     ) -> None:
         async with async_session_maker() as session:
-            notif=await notification_repository.create_notification(
+            notif = await notification_repository.create_notification(
                 session,
                 user_id=user_id,
                 title=title,
                 message=message,
                 notification_type=notification_type,
             )
+            await session.commit()
+            await session.refresh(notif)
         
         await manager.send_to_user(
             user_id,
@@ -96,14 +101,18 @@ class NotificationService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Notification not found",
             )
+        await db.commit()
+        await db.refresh(notification)
         return notification
 
     async def mark_all_notifications_as_read(
         self, db: AsyncSession, *, current_user: User
     ) -> int:
-        return await notification_repository.mark_all_as_read(
+        count = await notification_repository.mark_all_as_read(
             db, user_id=current_user.id
         )
+        await db.commit()
+        return count
 
     @staticmethod
     async def notify_event_cancelled(event_id: UUID, event_title: str) -> None:
@@ -129,6 +138,8 @@ class NotificationService:
                     message=f"The event '{event_title}' has been cancelled.",
                     notification_type=NotificationType.EVENT_CANCELLED,
                 )
+                await session.commit()
+                await session.refresh(notif)
                 await manager.send_to_user(
                     uid,
                     {

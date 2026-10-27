@@ -53,6 +53,7 @@ class BookingService:
             status = BookingStatus.CONFIRMED,
         )
         await booking_repository.create(db,booking)
+        await db.commit()
         booking_with_event = await booking_repository.get_by_id_active(db,booking.id)
 
         return booking_with_event or booking
@@ -157,6 +158,7 @@ class BookingService:
         booking.status = BookingStatus.CANCELLED
         booking.is_deleted = soft_delete
         await booking_repository.update(db, booking)
+        await db.commit()
         if soft_delete:
             return booking
         updated_booking = await booking_repository.get_by_id_active(db, booking.id)

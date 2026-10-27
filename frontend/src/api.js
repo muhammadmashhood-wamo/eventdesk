@@ -60,15 +60,44 @@ function normalizeErrorPayload(detail) {
   return 'Request failed'
 }
 
+function parseJwtPayload(token) {
+  if (!token) return null
+  try {
+    const base64Url = token.split('.')[1]
+    if (!base64Url) return null
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch {
+    return null
+  }
+}
+
+function isTokenExpired(token, bufferSeconds = 30) {
+  const payload = parseJwtPayload(token)
+  if (!payload || !payload.exp) return true
+  return Date.now() >= (payload.exp - bufferSeconds) * 1000
+}
+
 async function refreshTokens() {
   if (refreshPromise) {
     return refreshPromise
   }
 
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    throw new Error('No refresh token available')
+  }
+
   refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: getRefreshToken() }),
+    body: JSON.stringify({ refresh_token: refreshToken }),
   }).then(async (response) => {
     const data = await safeJson(response)
     if (!response.ok) {
@@ -83,6 +112,25 @@ async function refreshTokens() {
   })
 
   return refreshPromise
+}
+
+async function getValidAccessToken() {
+  const currentToken = getAccessToken()
+  if (currentToken && !isTokenExpired(currentToken)) {
+    return currentToken
+  }
+
+  const refreshToken = getRefreshToken()
+  if (!refreshToken || isTokenExpired(refreshToken, 0)) {
+    return null
+  }
+
+  try {
+    const data = await refreshTokens()
+    return data?.access_token || getAccessToken()
+  } catch {
+    return null
+  }
 }
 
 async function request(endpoint, options = {}) {
@@ -192,4 +240,12 @@ export const api = {
   getHealth: () => request('/health', { noAuth: true }),
 }
 
-export { BASE_URL, WS_BASE_URL }
+export {
+  BASE_URL,
+  WS_BASE_URL,
+  refreshTokens,
+  getAccessToken,
+  getRefreshToken,
+  getValidAccessToken,
+  isTokenExpired,
+}
